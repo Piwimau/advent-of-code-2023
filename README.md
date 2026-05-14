@@ -195,6 +195,7 @@ similar in general.
 | Total                                   | 813.212 ms | 866.570 ms | 836.240 ms | 835.822 ms |          17.499 ms |
 
 > [!NOTE]
+>
 > The timings shown above represent actual computation times, not total process
 > lifetimes. Startup and shutdown of processes usually introduces an overhead of
 > a few milliseconds, but since this is not relevant for the performance of the
