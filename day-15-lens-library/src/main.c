@@ -205,7 +205,7 @@ static inline isize hash(const char* s) {
     SCU_ASSERT(s != nullptr);
     isize hash = 0;
     for (const char* c = s; *c != '\0'; c++) {
-        hash = ((hash + *c) * 17) % 256;
+        hash = (hash + *c) * 17 % 256;
     }
     return hash;
 }

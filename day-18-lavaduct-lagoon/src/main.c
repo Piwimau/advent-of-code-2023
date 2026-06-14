@@ -271,11 +271,11 @@ static isize lagoon_volume(const Instruction* instructions) {
                 next.y -= instruction->distance;
                 break;
         }
-        doubleArea += (prev.x * next.y) - (next.x * prev.y);
+        doubleArea += prev.x * next.y - next.x * prev.y;
         perimeter += instruction->distance;
         prev = next;
     }
-    return ((SCU_ABS(doubleArea) + perimeter) / 2) + 1;
+    return (SCU_ABS(doubleArea) + perimeter) / 2 + 1;
 }
 
 int main() {

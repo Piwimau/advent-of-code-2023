@@ -114,7 +114,7 @@ fail:
 static inline i64 race_win_possibilities(const Race* race) {
     SCU_ASSERT(race != nullptr);
     f64 time = (f64) race->time;
-    f64 d = (time * time) - (4.0 * (f64) race->distance);
+    f64 d = time * time - 4.0 * (f64) race->distance;
     i64 minTime = (i64) floor((time - sqrt(d)) / 2.0) + 1;
     i64 maxTime = (i64) ceil((time + sqrt(d)) / 2.0) - 1;
     return maxTime - minTime + 1;

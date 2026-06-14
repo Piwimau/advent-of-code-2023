@@ -256,7 +256,7 @@ static inline bool grid_exists(const Grid* grid, Position position) {
 static inline isize grid_loss_at(const Grid* grid, Position position) {
     SCU_ASSERT(grid != nullptr);
     SCU_ASSERT(grid_exists(grid, position));
-    return grid->losses[(position.y * grid->width) + position.x];
+    return grid->losses[position.y * grid->width + position.x];
 }
 
 /**

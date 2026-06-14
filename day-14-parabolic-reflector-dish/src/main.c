@@ -205,13 +205,13 @@ static inline void platform_tilt_north(Platform* platform) {
     for (isize x = 0; x < width; x++) {
         isize nextEmptyY = 0;
         for (isize y = 0; y < height; y++) {
-            Field* field = &fields[(y * width) + x];
+            Field* field = &fields[y * width + x];
             if (*field == FIELD_CUBE_ROCK) {
                 nextEmptyY = y + 1;
             }
             else if (*field == FIELD_ROUND_ROCK) {
                 *field = FIELD_EMPTY;
-                fields[(nextEmptyY * width) + x] = FIELD_ROUND_ROCK;
+                fields[nextEmptyY * width + x] = FIELD_ROUND_ROCK;
                 nextEmptyY++;
             }
         }
@@ -232,13 +232,13 @@ static inline void platform_tilt_west(Platform* platform) {
     for (isize y = 0; y < height; y++) {
         isize nextEmptyX = 0;
         for (isize x = 0; x < width; x++) {
-            Field* field = &fields[(y * width) + x];
+            Field* field = &fields[y * width + x];
             if (*field == FIELD_CUBE_ROCK) {
                 nextEmptyX = x + 1;
             }
             else if (*field == FIELD_ROUND_ROCK) {
                 *field = FIELD_EMPTY;
-                fields[(y * width) + nextEmptyX] = FIELD_ROUND_ROCK;
+                fields[y * width + nextEmptyX] = FIELD_ROUND_ROCK;
                 nextEmptyX++;
             }
         }
@@ -259,13 +259,13 @@ static inline void platform_tilt_south(Platform* platform) {
     for (isize x = 0; x < width; x++) {
         isize nextEmptyY = height - 1;
         for (isize y = height - 1; y >= 0; y--) {
-            Field* field = &fields[(y * width) + x];
+            Field* field = &fields[y * width + x];
             if (*field == FIELD_CUBE_ROCK) {
                 nextEmptyY = y - 1;
             }
             else if (*field == FIELD_ROUND_ROCK) {
                 *field = FIELD_EMPTY;
-                fields[(nextEmptyY * width) + x] = FIELD_ROUND_ROCK;
+                fields[nextEmptyY * width + x] = FIELD_ROUND_ROCK;
                 nextEmptyY--;
             }
         }
@@ -286,13 +286,13 @@ static inline void platform_tilt_east(Platform* platform) {
     for (isize y = 0; y < height; y++) {
         isize nextEmptyX = width - 1;
         for (isize x = width - 1; x >= 0; x--) {
-            Field* field = &fields[(y * width) + x];
+            Field* field = &fields[y * width + x];
             if (*field == FIELD_CUBE_ROCK) {
                 nextEmptyX = x - 1;
             }
             else if (*field == FIELD_ROUND_ROCK) {
                 *field = FIELD_EMPTY;
-                fields[(y * width) + nextEmptyX] = FIELD_ROUND_ROCK;
+                fields[y * width + nextEmptyX] = FIELD_ROUND_ROCK;
                 nextEmptyX--;
             }
         }
@@ -314,7 +314,7 @@ static inline isize platform_load(const Platform* platform) {
     isize totalLoad = 0;
     for (isize y = 0; y < height; y++) {
         for (isize x = 0; x < width; x++) {
-            if (fields[(y * width) + x] == FIELD_ROUND_ROCK) {
+            if (fields[y * width + x] == FIELD_ROUND_ROCK) {
                 totalLoad += height - y;
             }
         }

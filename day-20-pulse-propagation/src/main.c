@@ -531,7 +531,7 @@ static inline isize lcm(isize a, isize b) {
         n = m % n;
         m = temp;
     }
-    return (a / m) * b;
+    return a / m * b;
 }
 
 /**

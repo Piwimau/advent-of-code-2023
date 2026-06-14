@@ -197,8 +197,8 @@ static ScuError graph_parse(Graph* graph) {
     }
     Edge* edge;
     SCU_LIST_FOREACH(edge, edges) {
-        graph->capacities[(edge->src * graph->nodes) + edge->dst]++;
-        graph->capacities[(edge->dst * graph->nodes) + edge->src]++;
+        graph->capacities[edge->src * graph->nodes + edge->dst]++;
+        graph->capacities[edge->dst * graph->nodes + edge->src]++;
     }
     scu_list_free(edges);
     return SCU_ERROR_NONE;
@@ -271,7 +271,7 @@ static inline bool find_path(
     i32 u;
     while (scu_queue_try_dequeue(queue, &u)) {
         for (i32 v = 0; v < count; v++) {
-            if (!visited[v] && (residuals[(u * count) + v] > 0)) {
+            if (!visited[v] && (residuals[u * count + v] > 0)) {
                 parent[v] = u;
                 visited[v] = true;
                 if (v == dst) {
@@ -319,7 +319,7 @@ static inline i32 count_reachable(
     while (scu_queue_try_dequeue(queue, &u)) {
         reachable++;
         for (i32 v = 0; v < count; v++) {
-            if (!visited[v] && (residuals[(u * count) + v] > 0)) {
+            if (!visited[v] && (residuals[u * count + v] > 0)) {
                 visited[v] = true;
                 scu_queue_enqueue(queue, &v);
             }
@@ -367,8 +367,8 @@ static i32 graph_product_of_group_sizes(const Graph* graph) {
         ) {
             for (i32 v = sink; v != 0; v = parent[v]) {
                 i32 u = parent[v];
-                residuals[(u * graph->nodes) + v]--;
-                residuals[(v * graph->nodes) + u]++;
+                residuals[u * graph->nodes + v]--;
+                residuals[v * graph->nodes + u]++;
             }
             flow++;
         }

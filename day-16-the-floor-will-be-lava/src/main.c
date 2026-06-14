@@ -352,7 +352,7 @@ static isize grid_energized_tiles(
     while (scu_queue_try_dequeue(queue, &state)) {
         position = state.position;
         direction = state.direction;
-        isize index = (position.y * grid->width) + position.x;
+        isize index = position.y * grid->width + position.x;
         if ((visited[index] & direction) != 0) {
             continue;
         }

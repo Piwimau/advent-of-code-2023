@@ -274,7 +274,7 @@ static i64 almanac_lowest_location_single(const Almanac* almanac) {
                     (dest >= mapping->src)
                         && (dest < (mapping->src + mapping->length))
                 ) {
-                    dest = mapping->dest + (dest - mapping->src);
+                    dest = mapping->dest + dest - mapping->src;
                     break;
                 }
             }
@@ -332,7 +332,7 @@ static i64 almanac_lowest_location_ranges(const Almanac* almanac) {
                             scu_stack_push(oldRanges, &before);
                         }
                         Range translated = {
-                            .src = overlapStart + (mapping->dest - mapping->src),
+                            .src = overlapStart + mapping->dest - mapping->src,
                             .length = overlapEnd - overlapStart
                         };
                         scu_stack_push(newRanges, &translated);

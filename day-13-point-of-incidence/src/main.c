@@ -187,8 +187,8 @@ static inline isize pattern_find_horizontal(
             offset++
         ) {
             for (isize x = 0; x < width; x++) {
-                Field l = fields[((y - offset) * width) + x];
-                Field r = fields[((y + 1 + offset) * width) + x];
+                Field l = fields[(y - offset) * width + x];
+                Field r = fields[(y + 1 + offset) * width + x];
                 if (l != r) {
                     diff++;
                     if (diff > targetDiff) {
@@ -234,8 +234,8 @@ static inline isize pattern_find_vertical(
             offset++
         ) {
             for (isize y = 0; y < height; y++) {
-                Field l = fields[(y * width) + (x - offset)];
-                Field r = fields[(y * width) + (x + 1 + offset)];
+                Field l = fields[y * width + (x - offset)];
+                Field r = fields[y * width + (x + 1 + offset)];
                 if (l != r) {
                     diff++;
                     if (diff > targetDiff) {

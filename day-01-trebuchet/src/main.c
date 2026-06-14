@@ -98,8 +98,8 @@ static inline bool find_calibration_values(
         *alnumCalibrationValue = -1;
         return false;
     }
-    *calibrationValue = (firstDigit * 10) + lastDigit;
-    *alnumCalibrationValue = (firstAlnumDigit * 10) + lastAlnumDigit;
+    *calibrationValue = firstDigit * 10 + lastDigit;
+    *alnumCalibrationValue = firstAlnumDigit * 10 + lastAlnumDigit;
     return true;
 }
 

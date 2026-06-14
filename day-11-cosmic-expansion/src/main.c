@@ -267,7 +267,7 @@ static isize image_sum_of_shortest_path_lengths(
     }
     for (isize y = 0; y < image->height; y++) {
         for (isize x = 0; x < image->width; x++) {
-            if (image->pixels[(y * image->width) + x] == PIXEL_GALAXY) {
+            if (image->pixels[y * image->width + x] == PIXEL_GALAXY) {
                 // Instead of actually creating the expanded image, we can
                 // simply calculate the actual positions of the galaxies by
                 // counting how many empty rows and columns are before them, and
@@ -285,8 +285,8 @@ static isize image_sum_of_shortest_path_lengths(
                     }
                 }
                 Position position = {
-                    .x = x + (emptyColumnsBefore * (expansionFactor - 1)),
-                    .y = y + (emptyRowsBefore * (expansionFactor - 1))
+                    .x = x + emptyColumnsBefore * (expansionFactor - 1),
+                    .y = y + emptyRowsBefore * (expansionFactor - 1)
                 };
                 if (scu_list_add(&galaxies, &position) != SCU_ERROR_NONE) {
                     scu_list_free(galaxies);

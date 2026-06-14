@@ -161,20 +161,19 @@ static isize hailstones_intersections(const Hailstone* hailstones) {
         for (isize j = i + 1; j < scu_list_count(hailstones); j++) {
             Hailstone a = hailstones[i];
             Hailstone b = hailstones[j];
-            f64 d = (b.velocity.x * a.velocity.y)
-                - (a.velocity.x * b.velocity.y);
+            f64 d = b.velocity.x * a.velocity.y - a.velocity.x * b.velocity.y;
             if (d == 0.0) {
                 continue;
             }
             f64 dx = b.position.x - a.position.x;
             f64 dy = b.position.y - a.position.y;
-            f64 tA = ((dx * -b.velocity.y) - (-b.velocity.x * dy)) / d;
-            f64 tB = ((a.velocity.x * dy) - (a.velocity.y * dx)) / d;
+            f64 tA = (dx * -b.velocity.y + b.velocity.x * dy) / d;
+            f64 tB = (a.velocity.x * dy - a.velocity.y * dx) / d;
             if ((tA < 0.0) || (tB < 0.0)) {
                 continue;
             }
-            f64 x = a.position.x + (a.velocity.x * tA);
-            f64 y = a.position.y + (a.velocity.y * tA);
+            f64 x = a.position.x + a.velocity.x * tA;
+            f64 y = a.position.y + a.velocity.y * tA;
             if (
                 (x >= TEST_AREA_MIN) && (x <= TEST_AREA_MAX)
                     && (y >= TEST_AREA_MIN) && (y <= TEST_AREA_MAX)
@@ -217,21 +216,21 @@ static f64 hailstones_sum_of_perfect_throw(const Hailstone* hailstones) {
         m[k][3] = py1 - py0;
         m[k][4] = px0 - px1;
         m[k][5] = 0.0;
-        m[k][6] = (px0 * vy0) - (py0 * vx0) - (px1 * vy1) + (py1 * vx1);
+        m[k][6] = px0 * vy0 - py0 * vx0 - px1 * vy1 + py1 * vx1;
         m[k + 2][0] = vz0 - vz1;
         m[k + 2][1] = 0.0;
         m[k + 2][2] = vx1 - vx0;
         m[k + 2][3] = pz1 - pz0;
         m[k + 2][4] = 0.0;
         m[k + 2][5] = px0 - px1;
-        m[k + 2][6] = (px0 * vz0) - (pz0 * vx0) - (px1 * vz1) + (pz1 * vx1);
+        m[k + 2][6] = px0 * vz0 - pz0 * vx0 - px1 * vz1 + pz1 * vx1;
         m[k + 4][0] = 0.0;
         m[k + 4][1] = vz0 - vz1;
         m[k + 4][2] = vy1 - vy0;
         m[k + 4][3] = 0.0;
         m[k + 4][4] = pz1 - pz0;
         m[k + 4][5] = py0 - py1;
-        m[k + 4][6] = (py0 * vz0) - (pz0 * vy0) - (py1 * vz1) + (pz1 * vy1);
+        m[k + 4][6] = py0 * vz0 - pz0 * vy0 - py1 * vz1 + pz1 * vy1;
     }
     for (isize col = 0; col < SCU_COUNTOF(m); col++) {
         isize pivot = col;

@@ -229,7 +229,7 @@ static inline Tile* grid_tile_at(const Grid* grid, Position position) {
     ) {
         return nullptr;
     }
-    return &grid->tiles[(position.y * grid->width) + position.x];
+    return &grid->tiles[position.y * grid->width + position.x];
 }
 
 /**

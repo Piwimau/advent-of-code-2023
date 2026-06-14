@@ -253,8 +253,8 @@ fail:
 static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
     SCU_ASSERT(map != nullptr);
     SCU_ASSERT(steps >= 0);
-    isize width = isInfinite ? ((2 * steps) + 1) : map->width;
-    isize height = isInfinite ? ((2 * steps) + 1) : map->height;
+    isize width = isInfinite ? 2 * steps + 1 : map->width;
+    isize height = isInfinite ? 2 * steps + 1 : map->height;
     Position offset = {
         .x = isInfinite ? steps : 0,
         .y = isInfinite ? steps : 0
@@ -267,7 +267,7 @@ static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
         dists[i] = -1;
     }
     Position start = isInfinite ? (Position) { .x = 0, .y = 0 } : map->start;
-    dists[((start.y + offset.y) * width) + (start.x + offset.x)] = 0;
+    dists[(start.y + offset.y) * width + start.x + offset.x] = 0;
     ScuQueue* queue = scu_queue_new(SCU_SIZEOF(Position));
     if (queue == nullptr) {
         scu_free(dists);
@@ -280,7 +280,7 @@ static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
     Position prev;
     while (scu_queue_try_dequeue(queue, &prev)) {
         isize prevDist = dists[
-            ((prev.y + offset.y) * width) + (prev.x + offset.x)
+            (prev.y + offset.y) * width + prev.x + offset.x
         ];
         for (Direction dir = DIRECTION_LEFT; dir <= DIRECTION_DOWN; dir++) {
             Position next = position_move(prev, dir);
@@ -291,24 +291,24 @@ static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
             if (
                 (actualNext.x < 0) || (actualNext.x >= width)
                     || (actualNext.y < 0) || (actualNext.y >= height)
-                    || (dists[(actualNext.y * width) + actualNext.x] != -1)
+                    || (dists[actualNext.y * width + actualNext.x] != -1)
             ) {
                 continue;
             }
             Position tile = {
                 .x = isInfinite
-                    ? (((next.x + map->start.x) % map->width) + map->width)
+                    ? ((next.x + map->start.x) % map->width + map->width)
                         % map->width
                     : next.x,
                 .y = isInfinite
-                    ? (((next.y + map->start.y) % map->height) + map->height)
+                    ? ((next.y + map->start.y) % map->height + map->height)
                         % map->height
                     : next.y,
             };
-            if (map->tiles[(tile.y * map->width) + tile.x] != TILE_GARDEN) {
+            if (map->tiles[tile.y * map->width + tile.x] != TILE_GARDEN) {
                 continue;
             }
-            dists[(actualNext.y * width) + actualNext.x] = prevDist + 1;
+            dists[actualNext.y * width + actualNext.x] = prevDist + 1;
             error = scu_queue_enqueue(queue, &next);
             if (error != SCU_ERROR_NONE) {
                 goto fail;
@@ -358,11 +358,11 @@ static inline isize map_reachable_infinite(const Map* map) {
     isize period = map->width;
     isize f0 = map_reachable(map, half, true);
     isize f1 = map_reachable(map, half + period, true);
-    isize f2 = map_reachable(map, half + (2 * period), true);
+    isize f2 = map_reachable(map, half + 2 * period, true);
     isize d1 = f1 - f0;
     isize d2 = f2 - f1;
     isize n = (STEPS_INFINITE - half) / period;
-    return f0 + (n * d1) + (((n * (n - 1)) / 2) * (d2 - d1));
+    return f0 + n * d1 + n * (n - 1) / 2 * (d2 - d1);
 }
 
 int main() {

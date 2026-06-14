@@ -295,7 +295,7 @@ static ScuError grid_parse(Grid* grid) {
         }
     }
     for (isize i = 0; i < grid->width; i++) {
-        if (grid->tiles[((grid->height - 1) * grid->width) + i] == TILE_PATH) {
+        if (grid->tiles[(grid->height - 1) * grid->width + i] == TILE_PATH) {
             grid->end = (Position) { .x = i, .y = grid->height - 1 };
             break;
         }
@@ -368,7 +368,7 @@ static inline bool grid_exists(const Grid* grid, Position position) {
 static inline isize grid_index(const Grid* grid, Position position) {
     SCU_ASSERT(grid != nullptr);
     SCU_ASSERT(grid_exists(grid, position));
-    return (position.y * grid->width) + position.x;
+    return position.y * grid->width + position.x;
 }
 
 /**

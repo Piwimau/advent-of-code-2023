@@ -161,7 +161,7 @@ static inline bool schematic_is_digit(
     if (!schematic_is_valid_position(schematic, position)) {
         return false;
     }
-    char c = schematic->grid[(position.y * schematic->width) + position.x];
+    char c = schematic->grid[position.y * schematic->width + position.x];
     return (c >= '0') && (c <= '9');
 }
 
@@ -185,7 +185,7 @@ static inline bool schematic_is_symbol(
     if (!schematic_is_valid_position(schematic, position)) {
         return false;
     }
-    char c = schematic->grid[(position.y * schematic->width) + position.x];
+    char c = schematic->grid[position.y * schematic->width + position.x];
     return ((c < '0') || (c > '9')) && (c != '.');
 }
 
@@ -272,7 +272,7 @@ static inline const char* schematic_char_at(
 ) {
     SCU_ASSERT(schematic != nullptr);
     SCU_ASSERT(schematic_is_valid_position(schematic, position));
-    return &schematic->grid[(position.y * schematic->width) + position.x];
+    return &schematic->grid[position.y * schematic->width + position.x];
 }
 
 /**

@@ -334,7 +334,7 @@ static inline i64 lcm(i64 a, i64 b) {
         tempA = temp;
     }
     i64 gcd = tempA;
-    return (a / gcd) * b;
+    return a / gcd * b;
 }
 
 /**
