@@ -57,10 +57,13 @@ day-02-cube-conundrum/
 ...
 day-25-snowverload/
   ...
+subprojects/
+  ...
 .clang-format
 .gitignore
 LICENSE
-Makefile
+meson.build
+meson.options
 README.md
 ```
 
@@ -94,64 +97,47 @@ If you want to try out one of my solutions, simply follow these steps below:
    ```
 
 3. [As explained above](#about-this-project), the solutions depend on my small
-   utility library [`SCU`](https://github.com/Piwimau/scu), which you need to
-   download, build and install as well. Since people prefer different operating
-   systems, compilers, flags, build systems and directory structures, I won't go
-   into much detail here. My projects usually have few dependencies, so I often
-   place the headers and compiled binaries (usually statically linked libraries)
-   in directories like `lib` and `lib/include` within the project directory. See
-   the [Makefile](Makefile) for more information on how I set up my build
-   infrastructure.
+   utility library [`SCU`](https://github.com/Piwimau/scu). You can either
+   download, build and install it yourself, or simply let Meson handle it for
+   you, which automatically includes it as a subproject locally if not found on
+   your system.
 
-4. Once you have downloaded the source code and installed `SCU` in an
-   appropriate directory, run `make help` to get an overview of the available
-   targets and variables. This should output something like this:
-
-   ```plaintext
-   Usage: make [TARGET]... [VARIABLE]...
-
-   Targets:
-     all    Build the selected day (default).
-     run    Build and run the selected day.
-     clean  Remove all build artifacts of the selected day.
-     help   Display this help and exit.
-
-   Variables:
-     CONFIG={debug|release}  Set the build configuration (default: debug).
-     DAY=N                   Select the day by its two-digit number N (default: first day found).
-     NATIVE=1                Enable machine-specific optimizations.
-     V                       Enable verbose build output.
-   ```
-
-   To build the solution for a specific day, run `make all` (or simply `make`)
-   and specify the day by its two-digit number.
-
-    ```shell
-    make DAY=01
-    ```
-
-    If you don't specify a day, the directory of the first day in the repository
-    will be selected by default. Note that `make all` produces an unoptimized
-    debug build by default. Optionally specify `CONFIG=release` and `NATIVE=1`
-    to enable (machine-specific) optimizations.
-
-    ```shell
-    make DAY=01 CONFIG=release NATIVE=1
-    ```
-
-5. To run the solution for a specific day, use `make run`, which will build the
-   solution (if not done already) and execute it.
+4. Once you have downloaded the source code and optionally installed `SCU` on
+   your system, you can configure the build process:
 
    ```shell
-   make run DAY=01 CONFIG=release NATIVE=1
+   meson setup build
    ```
 
-   Note that the solutions read the puzzle input from the standard input stream.
-   The `run` target expects a file called `input.txt` in the `resources`
-   directory of the selected day, which is used to redirect the standard input
-   stream. [As explained above](#about-this-project), my input files are not
-   included in the repository, so you'll have to create them yourself and paste
-   your puzzle input into them. You can find your input for each day
+   By default, this will configure the build process to produce unoptimized
+   debug executables. To build optimized release executables instead, specify
+   the `--buildtype=release` option:
+
+   ```shell
+   meson setup build --buildtype=release
+   ```
+
+   To build the solution for a specific day, run the following command, where
+   `<day>` corresponds to the directory of the day (e.g., `day-01-trebuchet`):
+
+   ```shell
+   meson compile -C build <day>
+   ```
+
+5. To run the solution for a specific day, run the following command:
+
+   ```shell
+   meson compile -C build run-<day>
+   ```
+
+   Again, `<day>` corresponds to the directory of the day (e.g.,
+   `day-01-trebuchet`). Note that the solutions read the puzzle input from the
+   standard input stream. The `run-<day>` target expects a file called
+   `input.txt` in the `resources` directory of the selected day, which is used
+   to redirect the standard input stream. [As explained
+   above](#about-this-project), my input files are not included in the
+   repository, so you'll have to create them yourself and paste your puzzle
+   input into them. You can find your input for each day
    [here](https://adventofcode.com/2023) if you haven't downloaded it already.
 
 ## Timings
@@ -159,11 +145,11 @@ If you want to try out one of my solutions, simply follow these steps below:
 Finally, here are some simple (non-scientific) timings I created using
 [`SCU`](https://github.com/Piwimau/scu) and my main machine (Intel Core
 i9-13900HX, 32GB DDR5-5600 RAM) running Windows 11 25H2. All used
-`CONFIG=release` and `NATIVE=1` to take advantage of (machine-specific)
-optimizations. The reported times are the result of ten runs and represent the
-(real) wall time, including the time spent for parsing the input, as well as
-printing the puzzle results. CPU times were usually slightly lower, but quite
-similar in general.
+`--buildtype=release` and `-Dnative=true` to take advantage of
+(machine-specific) optimizations. The reported times are the result of ten runs
+and represent the (real) wall time, including the time spent for parsing the
+input, as well as printing the puzzle results. CPU times were usually slightly
+lower, but quite similar in general.
 
 | Day                                     |        Min |        Max |       Mean |     Median | Standard Deviation |
 |-----------------------------------------|-----------:|-----------:|-----------:|-----------:|-------------------:|
