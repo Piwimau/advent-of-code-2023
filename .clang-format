@@ -180,6 +180,7 @@ SpaceInEmptyBlock: true
 SpaceInEmptyBraces: Always
 SpacesBeforeTrailingComments: 1
 SpacesInAngles: Never
+SpacesInBlockComments: Always
 SpacesInLineCommentPrefix:
     Minimum: 1
     Maximum: -1
