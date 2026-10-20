@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/hash-map.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a direction for navigating a network of nodes. */
@@ -68,8 +61,8 @@ static usize hash_node_name(const void* value) {
  * @return `true` if `*a` and `*b` are equal, otherwise `false`.
  */
 static bool equal_node_name(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     return scu_strncmp(a, b, SCU_SIZEOF(NodeName)) == 0;
 }
 
@@ -83,8 +76,8 @@ static bool equal_node_name(const void* a, const void* b) {
  * @return `true` if `*a` and `*b` are equal, otherwise `false`.
  */
 static bool equal_node(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const Node* l = a;
     const Node* r = b;
     return (scu_strncmp(l->name, r->name, SCU_SIZEOF(NodeName)) == 0)
@@ -103,7 +96,7 @@ static bool equal_node(const void* a, const void* b) {
  * @return `true` if a direction was successfully parsed, otherwise `false`.
  */
 static inline bool direction_parse(char c, Direction* direction) {
-    SCU_ASSERT(direction != nullptr);
+    SCU_ASSERT(direction);
     switch (c) {
         case 'L':
             *direction = DIRECTION_LEFT;
@@ -161,21 +154,21 @@ static inline bool direction_parse(char c, Direction* direction) {
  * @return `SCU_ERROR_NONE` on success, or an appropriate error code on failure.
  */
 static ScuError network_parse(Network* network) {
-    SCU_ASSERT(network != nullptr);
+    SCU_ASSERT(network);
     ScuError error = SCU_ERROR_NONE;
-    network->directions = scu_list_new(SCU_SIZEOF(Direction));
-    if (network->directions == nullptr) {
+    network->directions = scu_list_new(Direction);
+    if (!network->directions) {
         error = SCU_ERROR_OUT_OF_MEMORY;
         goto fail;
     }
     network->nodes = scu_hash_map_new(
-        SCU_SIZEOF(NodeName),
-        SCU_SIZEOF(Node),
+        NodeName,
+        Node,
         hash_node_name,
         equal_node_name,
         equal_node
     );
-    if (network->nodes == nullptr) {
+    if (!network->nodes) {
         error = SCU_ERROR_OUT_OF_MEMORY;
         goto fail;
     }
@@ -227,12 +220,12 @@ static ScuError network_parse(Network* network) {
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    scu_list_free(network->directions);
-    scu_hash_map_free(network->nodes);
+    SCU_ARRAY_DELETE(line, size);
+    scu_list_delete(network->directions);
+    scu_hash_map_delete(network->nodes);
     network->directions = nullptr;
     network->nodes = nullptr;
     return error;
@@ -259,8 +252,8 @@ static i64 network_required_steps(
     const Network* network,
     const NodeName* dest
 ) {
-    SCU_ASSERT(network != nullptr);
-    SCU_ASSERT(dest != nullptr);
+    SCU_ASSERT(network);
+    SCU_ASSERT(dest);
     const Node* current = scu_hash_map_get(
         network->nodes,
         &(NodeName) { "AAA" }
@@ -300,8 +293,8 @@ static inline i64 network_required_steps_any(
     const Network* network,
     const NodeName* src
 ) {
-    SCU_ASSERT(network != nullptr);
-    SCU_ASSERT(src != nullptr);
+    SCU_ASSERT(network);
+    SCU_ASSERT(src);
     const Node* current = scu_hash_map_get(network->nodes, src);
     isize count = scu_list_count(network->directions);
     i64 steps = 0;
@@ -352,7 +345,7 @@ static inline i64 lcm(i64 a, i64 b) {
  * @return The number of steps required to reach all end nodes simultaneously.
  */
 static i64 network_required_steps_all(const Network* network) {
-    SCU_ASSERT(network != nullptr);
+    SCU_ASSERT(network);
     i64 steps = 1;
     ScuHashMapEntry entry;
     SCU_HASH_MAP_FOREACH(entry, network->nodes) {
@@ -379,10 +372,10 @@ static i64 network_required_steps_all(const Network* network) {
  *
  * @param[in, out] network The network to deallocate all resources of.
  */
-static void network_free(Network* network) {
-    if (network != nullptr) {
-        scu_list_free(network->directions);
-        scu_hash_map_free(network->nodes);
+static void network_delete(Network* network) {
+    if (network) {
+        scu_list_delete(network->directions);
+        scu_hash_map_delete(network->nodes);
         network->directions = nullptr;
         network->nodes = nullptr;
     }
@@ -410,6 +403,6 @@ int main() {
             "simultaneously.\n",
         requiredStepsAll
     );
-    network_free(&network);
+    network_delete(&network);
     return EXIT_SUCCESS;
 }

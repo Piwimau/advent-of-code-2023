@@ -1,15 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/equal.h>
-#include <scu/hash-map.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/queue.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents the type of a module. */
@@ -83,7 +74,7 @@ static constexpr isize BUTTON_PRESSES = 1000;
  * @return A hash for the specified module name.
  */
 static usize module_name_hash(const void* value) {
-    SCU_ASSERT(value != nullptr);
+    SCU_ASSERT(value);
     const char (*name)[MAX_NAME_LENGTH] = value;
     const char* temp = *name;
     return scu_hash_str(&temp);
@@ -100,8 +91,8 @@ static usize module_name_hash(const void* value) {
  * @return `true` if the specified module names are equal, otherwise `false`.
  */
 static bool module_name_equal(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const char (*l)[MAX_NAME_LENGTH] = a;
     const char (*r)[MAX_NAME_LENGTH] = b;
     return scu_strncmp(*l, *r, MAX_NAME_LENGTH) == 0;
@@ -121,11 +112,11 @@ static bool module_name_equal(const void* a, const void* b) {
  *
  * @param[in, out] module The module to deallocate.
  */
-static inline void module_free(Module* module) {
-    if (module != nullptr) {
-        scu_list_free(module->outputs);
+static inline void module_delete(Module* module) {
+    if (module) {
+        scu_list_delete(module->outputs);
         module->outputs = nullptr;
-        scu_hash_map_free(module->inputs);
+        scu_hash_map_delete(module->inputs);
         module->inputs = nullptr;
     }
 }
@@ -167,8 +158,8 @@ static inline ScuError module_parse(
     const char* restrict line,
     Module* restrict module
 ) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(module != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(module);
     isize spaceIndex = scu_str_index_of(line, ' ');
     if ((spaceIndex == -1) || ((spaceIndex - 1) >= MAX_NAME_LENGTH)) {
         return SCU_ERROR_INVALID_FORMAT;
@@ -199,21 +190,21 @@ static inline ScuError module_parse(
         return SCU_ERROR_INVALID_FORMAT;
     }
     line += spaceIndex + 1;
-    module->outputs = scu_list_new(SCU_SIZEOF(char[MAX_NAME_LENGTH]));
-    if (module->outputs == nullptr) {
+    module->outputs = scu_list_new(char[MAX_NAME_LENGTH]);
+    if (!module->outputs) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     module->isOn = false;
     ScuError error = SCU_ERROR_NONE;
     if (module->type == MODULE_TYPE_CONJUNCTION) {
         module->inputs = scu_hash_map_new(
-            SCU_SIZEOF(char[MAX_NAME_LENGTH]),
-            SCU_SIZEOF(bool),
+            char[MAX_NAME_LENGTH],
+            bool,
             module_name_hash,
             module_name_equal,
             scu_equal_bool
         );
-        if (module->inputs == nullptr) {
+        if (!module->inputs) {
             error = SCU_ERROR_OUT_OF_MEMORY;
             goto fail;
         }
@@ -250,7 +241,7 @@ static inline ScuError module_parse(
     }
     return SCU_ERROR_NONE;
 fail:
-    module_free(module);
+    module_delete(module);
     return error;
 }
 
@@ -265,8 +256,8 @@ fail:
  * @return `true` if the specified modules are equal, otherwise `false`.
  */
 static bool module_equal(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const Module* l = a;
     const Module* r = b;
     // Realistically speaking, we should probably also compare the inputs and
@@ -285,13 +276,13 @@ static bool module_equal(const void* a, const void* b) {
  *
  * @param[in, out] modules The map of modules to deallocate.
  */
-static inline void modules_free(ScuHashMap* modules) {
-    if (modules != nullptr) {
+static inline void modules_delete(ScuHashMap* modules) {
+    if (modules) {
         ScuHashMapEntry entry;
         SCU_HASH_MAP_FOREACH(entry, modules) {
-            module_free(entry.value);
+            module_delete(entry.value);
         }
-        scu_hash_map_free(modules);
+        scu_hash_map_delete(modules);
     }
 }
 
@@ -308,15 +299,15 @@ static inline void modules_free(ScuHashMap* modules) {
  * @return `SCU_ERROR_NONE` on success, otherwise an appropriate error code.
  */
 static ScuError modules_parse(ScuHashMap** modules) {
-    SCU_ASSERT(modules != nullptr);
+    SCU_ASSERT(modules);
     *modules = scu_hash_map_new(
-        SCU_SIZEOF(char[MAX_NAME_LENGTH]),
-        SCU_SIZEOF(Module),
+        char[MAX_NAME_LENGTH],
+        Module,
         module_name_hash,
         module_name_equal,
         module_equal
     );
-    if (*modules == nullptr) {
+    if (!*modules) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -337,7 +328,7 @@ static ScuError modules_parse(ScuHashMap** modules) {
             // If we fail to add the module to the map, we need to deallocate it
             // manually here since it won't be caught by the cleanup code at the
             // end of this function.
-            module_free(&module);
+            module_delete(&module);
             goto fail;
         }
     }
@@ -359,11 +350,11 @@ static ScuError modules_parse(ScuHashMap** modules) {
             }
         }
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    modules_free(*modules);
+    SCU_ARRAY_DELETE(line, size);
+    modules_delete(*modules);
     *modules = nullptr;
     return error;
 }
@@ -377,9 +368,9 @@ fail:
  * @return The product of the number of low and high pulses, or `-1` on failure.
  */
 static isize modules_product_of_pulses(ScuHashMap* modules) {
-    SCU_ASSERT(modules != nullptr);
-    ScuQueue* queue = scu_queue_new(SCU_SIZEOF(Pulse));
-    if (queue == nullptr) {
+    SCU_ASSERT(modules);
+    ScuQueue* queue = scu_queue_new(Pulse);
+    if (!queue) {
         return -1;
     }
     isize lowPulses = 0;
@@ -485,10 +476,10 @@ static isize modules_product_of_pulses(ScuHashMap* modules) {
             }
         }
     }
-    scu_queue_free(queue);
+    scu_queue_delete(queue);
     return lowPulses * highPulses;
 fail:
-    scu_queue_free(queue);
+    scu_queue_delete(queue);
     return -1;
 }
 
@@ -499,7 +490,7 @@ fail:
  * @param[in, out] modules The map of modules to reset.
  */
 static void modules_reset(ScuHashMap* modules) {
-    SCU_ASSERT(modules != nullptr);
+    SCU_ASSERT(modules);
     ScuHashMapEntry entry;
     SCU_HASH_MAP_FOREACH(entry, modules) {
         Module* module = entry.value;
@@ -542,7 +533,7 @@ static inline isize lcm(isize a, isize b) {
  * @return The minimum number of button presses, or `-1` on failure.
  */
 static isize modules_min_button_presses(ScuHashMap* modules) {
-    SCU_ASSERT(modules != nullptr);
+    SCU_ASSERT(modules);
     modules_reset(modules);
     Module* rxInput = nullptr;
     ScuHashMapEntry entry;
@@ -557,22 +548,22 @@ static isize modules_min_button_presses(ScuHashMap* modules) {
         }
     }
 rxInputFound:
-    if ((rxInput == nullptr) || (rxInput->type != MODULE_TYPE_CONJUNCTION)) {
+    if (!rxInput || (rxInput->type != MODULE_TYPE_CONJUNCTION)) {
         return -1;
     }
     ScuHashMap* cycleLengths = scu_hash_map_new(
-        SCU_SIZEOF(char[MAX_NAME_LENGTH]),
-        SCU_SIZEOF(isize),
+        char[MAX_NAME_LENGTH],
+        isize,
         module_name_hash,
         module_name_equal,
         scu_equal_isize
     );
-    if (cycleLengths == nullptr) {
+    if (!cycleLengths) {
         return -1;
     }
-    ScuQueue* queue = scu_queue_new(SCU_SIZEOF(Pulse));
-    if (queue == nullptr) {
-        scu_hash_map_free(cycleLengths);
+    ScuQueue* queue = scu_queue_new(Pulse);
+    if (!queue) {
+        scu_hash_map_delete(cycleLengths);
         return -1;
     }
     for (
@@ -696,12 +687,12 @@ rxInputFound:
         isize cycleLength = *(isize*) cycleEntry.value;
         minButtonPresses = lcm(minButtonPresses, cycleLength);
     }
-    scu_queue_free(queue);
-    scu_hash_map_free(cycleLengths);
+    scu_queue_delete(queue);
+    scu_hash_map_delete(cycleLengths);
     return minButtonPresses;
 fail:
-    scu_queue_free(queue);
-    scu_hash_map_free(cycleLengths);
+    scu_queue_delete(queue);
+    scu_hash_map_delete(cycleLengths);
     return -1;
 }
 
@@ -729,6 +720,6 @@ int main() {
             "pulse to the module named \"rx\" is %" ISIZE_PRID ".\n",
         minButtonPresses
     );
-    modules_free(modules);
+    modules_delete(modules);
     return EXIT_SUCCESS;
 }

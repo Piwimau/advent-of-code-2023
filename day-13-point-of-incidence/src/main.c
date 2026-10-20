@@ -1,12 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a field in a pattern. */
@@ -45,7 +39,7 @@ typedef struct Pattern {
  * @return `true` if a field was successfully parsed, otherwise `false`.
  */
 static inline bool field_parse(char c, Field* field) {
-    SCU_ASSERT(field != nullptr);
+    SCU_ASSERT(field);
     switch (c) {
         case '.':
             *field = FIELD_ASH;
@@ -72,9 +66,9 @@ static inline bool field_parse(char c, Field* field) {
  *
  * @param[in, out] pattern The pattern to deallocate.
  */
-static inline void pattern_free(Pattern* pattern) {
-    if (pattern != nullptr) {
-        scu_list_free(pattern->fields);
+static inline void pattern_delete(Pattern* pattern) {
+    if (pattern) {
+        scu_list_delete(pattern->fields);
         pattern->fields = nullptr;
     }
 }
@@ -106,11 +100,11 @@ static inline void pattern_free(Pattern* pattern) {
  * end-of-file condition occurred, otherwise an appropriate error code.
  */
 static inline ScuError pattern_parse(Pattern* pattern) {
-    SCU_ASSERT(pattern != nullptr);
+    SCU_ASSERT(pattern);
     pattern->width = 0;
     pattern->height = 0;
-    pattern->fields = scu_list_new(SCU_SIZEOF(Field));
-    if (pattern->fields == nullptr) {
+    pattern->fields = scu_list_new(Field);
+    if (!pattern->fields) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     bool foundWidth = false;
@@ -152,11 +146,11 @@ static inline ScuError pattern_parse(Pattern* pattern) {
     if ((error != SCU_ERROR_NONE) && (error != SCU_ERROR_END_OF_FILE)) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return error;
 fail:
-    scu_free(line);
-    pattern_free(pattern);
+    SCU_ARRAY_DELETE(line, size);
+    pattern_delete(pattern);
     return error;
 }
 
@@ -174,7 +168,7 @@ static inline isize pattern_find_horizontal(
     const Pattern* pattern,
     isize targetDiff
 ) {
-    SCU_ASSERT(pattern != nullptr);
+    SCU_ASSERT(pattern);
     SCU_ASSERT(targetDiff >= 0);
     const Field* fields = pattern->fields;
     isize width = pattern->width;
@@ -221,7 +215,7 @@ static inline isize pattern_find_vertical(
     const Pattern* pattern,
     isize targetDiff
 ) {
-    SCU_ASSERT(pattern != nullptr);
+    SCU_ASSERT(pattern);
     SCU_ASSERT(targetDiff >= 0);
     const Field* fields = pattern->fields;
     isize width = pattern->width;
@@ -264,7 +258,7 @@ static inline isize pattern_find_vertical(
  * @return The score of the pattern, or `-1` if no valid reflection was found.
  */
 static inline isize pattern_score(const Pattern* pattern, isize targetDiff) {
-    SCU_ASSERT(pattern != nullptr);
+    SCU_ASSERT(pattern);
     SCU_ASSERT(targetDiff >= 0);
     isize horizontal = pattern_find_horizontal(pattern, targetDiff);
     if (horizontal != -1) {
@@ -283,13 +277,13 @@ static inline isize pattern_score(const Pattern* pattern, isize targetDiff) {
  *
  * @param[in, out] patterns The list of patterns to deallocate.
  */
-static void patterns_free(Pattern* patterns) {
-    if (patterns != nullptr) {
+static void patterns_delete(Pattern* patterns) {
+    if (patterns) {
         Pattern* pattern;
         SCU_LIST_FOREACH(pattern, patterns) {
-            pattern_free(pattern);
+            pattern_delete(pattern);
         }
-        scu_list_free(patterns);
+        scu_list_delete(patterns);
     }
 }
 
@@ -307,9 +301,9 @@ static void patterns_free(Pattern* patterns) {
  * otherwise an appropriate error code.
  */
 static ScuError patterns_parse(Pattern** patterns) {
-    SCU_ASSERT(patterns != nullptr);
-    *patterns = scu_list_new(SCU_SIZEOF(Pattern));
-    if (*patterns == nullptr) {
+    SCU_ASSERT(patterns);
+    *patterns = scu_list_new(Pattern);
+    if (!*patterns) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     ScuError error;
@@ -331,7 +325,7 @@ static ScuError patterns_parse(Pattern** patterns) {
     }
     return SCU_ERROR_NONE;
 fail:
-    patterns_free(*patterns);
+    patterns_delete(*patterns);
     return error;
 }
 
@@ -349,7 +343,7 @@ fail:
  * @return The total score of the patterns.
  */
 static isize patterns_score(const Pattern* patterns, isize targetDiff) {
-    SCU_ASSERT(patterns != nullptr);
+    SCU_ASSERT(patterns);
     SCU_ASSERT(targetDiff >= 0);
     isize totalScore = 0;
     const Pattern* pattern;
@@ -385,6 +379,6 @@ int main() {
             ISIZE_PRID ".\n",
         smudgedScore
     );
-    patterns_free(patterns);
+    patterns_delete(patterns);
     return EXIT_SUCCESS;
 }

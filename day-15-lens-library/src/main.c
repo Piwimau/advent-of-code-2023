@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents an operation for modifying the lens configuration. */
@@ -51,9 +44,9 @@ typedef struct Step {
  *
  * @param[in, out] step The step to deallocate.
  */
-static inline void step_free(Step* step) {
-    if (step != nullptr) {
-        scu_free(step->label);
+static inline void step_delete(Step* step) {
+    if (step) {
+        SCU_ARRAY_DELETE(step->label, scu_strlen(step->label) + 1);
         step->label = nullptr;
     }
 }
@@ -92,8 +85,8 @@ static inline ScuError step_parse(
     const char* restrict* restrict line,
     Step* restrict step
 ) {
-    SCU_ASSERT((line != nullptr) && (*line != nullptr));
-    SCU_ASSERT(step != nullptr);
+    SCU_ASSERT(line && *line);
+    SCU_ASSERT(step);
     isize endIndex = scu_str_index_of(*line, ',');
     if (endIndex == -1) {
         endIndex = scu_strlen(*line);
@@ -107,14 +100,14 @@ static inline ScuError step_parse(
         return SCU_ERROR_INVALID_FORMAT;
     }
     step->label = scu_strndup(*line, operationIndex);
-    if (step->label == nullptr) {
+    if (!step->label) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     if ((*line)[operationIndex] == '=') {
         step->operation = OPERATION_ADD_OR_REPLACE;
         char c = (*line)[operationIndex + 1];
         if ((c < '1') || (c > '9')) {
-            step_free(step);
+            step_delete(step);
             return SCU_ERROR_INVALID_FORMAT;
         }
         step->focalLength = c - '0';
@@ -137,13 +130,13 @@ static inline ScuError step_parse(
  *
  * @param[in, out] steps The list of steps to deallocate.
  */
-static inline void steps_free(Step* steps) {
-    if (steps != nullptr) {
+static inline void steps_delete(Step* steps) {
+    if (steps) {
         Step* step;
         SCU_LIST_FOREACH(step, steps) {
-            step_free(step);
+            step_delete(step);
         }
-        scu_list_free(steps);
+        scu_list_delete(steps);
     }
 }
 
@@ -158,9 +151,9 @@ static inline void steps_free(Step* steps) {
  * otherwise an appropriate error code.
  */
 static ScuError steps_parse(Step** steps) {
-    SCU_ASSERT(steps != nullptr);
-    *steps = scu_list_new(SCU_SIZEOF(Step));
-    if (*steps == nullptr) {
+    SCU_ASSERT(steps);
+    *steps = scu_list_new(Step);
+    if (!*steps) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -177,7 +170,7 @@ static ScuError steps_parse(Step** steps) {
             // If we fail to add the step to the list, we need to deallocate it
             // manually here since it won't be caught by the cleanup code at the
             // end of this function.
-            step_free(&step);
+            step_delete(&step);
             goto fail;
         }
     }
@@ -185,11 +178,11 @@ static ScuError steps_parse(Step** steps) {
         error = SCU_ERROR_INVALID_FORMAT;
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    steps_free(*steps);
+    SCU_ARRAY_DELETE(line, size);
+    steps_delete(*steps);
     *steps = nullptr;
     return error;
 }
@@ -202,7 +195,7 @@ fail:
  * @return The hash of the specified null-terminated byte string.
  */
 static inline isize hash(const char* s) {
-    SCU_ASSERT(s != nullptr);
+    SCU_ASSERT(s);
     isize hash = 0;
     for (const char* c = s; *c != '\0'; c++) {
         hash = (hash + *c) * 17 % 256;
@@ -218,7 +211,7 @@ static inline isize hash(const char* s) {
  * error occurred.
  */
 static isize steps_sum_of_hashes(const Step* steps) {
-    SCU_ASSERT(steps != nullptr);
+    SCU_ASSERT(steps);
     char* buffer = nullptr;
     isize size = 0;
     isize sumOfHashes = 0;
@@ -241,7 +234,7 @@ static isize steps_sum_of_hashes(const Step* steps) {
         sumOfHashes += hash(buffer);
     }
 end:
-    scu_free(buffer);
+    SCU_ARRAY_DELETE(buffer, size);
     return sumOfHashes;
 }
 
@@ -253,16 +246,16 @@ end:
  * error occurred.
  */
 static isize steps_focusing_power(const Step* steps) {
-    SCU_ASSERT(steps != nullptr);
+    SCU_ASSERT(steps);
     Step* boxes[256] = { };
     isize focusingPower = 0;
     const Step* step;
     SCU_LIST_FOREACH(step, steps) {
         isize index = hash(step->label);
         if (step->operation == OPERATION_ADD_OR_REPLACE) {
-            if (boxes[index] == nullptr) {
-                boxes[index] = scu_list_new(SCU_SIZEOF(Step));
-                if (boxes[index] == nullptr) {
+            if (!boxes[index]) {
+                boxes[index] = scu_list_new(Step);
+                if (!boxes[index]) {
                     focusingPower = -1;
                     goto end;
                 }
@@ -282,7 +275,7 @@ static isize steps_focusing_power(const Step* steps) {
                 }
             }
         }
-        else if (boxes[index] != nullptr) {
+        else if (boxes[index]) {
             for (isize i = 0; i < scu_list_count(boxes[index]); i++) {
                 if (scu_strcmp(boxes[index][i].label, step->label) == 0) {
                     scu_list_remove_at(boxes[index], i);
@@ -292,7 +285,7 @@ static isize steps_focusing_power(const Step* steps) {
         }
     }
     for (isize i = 0; i < SCU_COUNTOF(boxes); i++) {
-        if (boxes[i] != nullptr) {
+        if (boxes[i]) {
             for (isize j = 0; j < scu_list_count(boxes[i]); j++) {
                 focusingPower += (i + 1) * (j + 1) * boxes[i][j].focalLength;
             }
@@ -301,7 +294,7 @@ static isize steps_focusing_power(const Step* steps) {
 end:
     Step** box;
     SCU_ARRAY_FOREACH(box, boxes) {
-        scu_list_free(*box);
+        scu_list_delete(*box);
     }
     return focusingPower;
 }
@@ -321,6 +314,6 @@ int main() {
     isize focusingPower = steps_focusing_power(steps);
     scu_printf("The sum of the hashes is %" ISIZE_PRID ".\n", sumOfHashes);
     scu_printf("The focusing power is %" ISIZE_PRID ".\n", focusingPower);
-    steps_free(steps);
+    steps_delete(steps);
     return EXIT_SUCCESS;
 }

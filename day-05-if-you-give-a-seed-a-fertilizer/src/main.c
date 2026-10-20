@@ -1,15 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/math.h>
-#include <scu/memory.h>
-#include <scu/stack.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /**
@@ -85,13 +76,13 @@ typedef struct Range {
  *
  * @param[in, out] almanac The almanac to deallocate all resources of.
  */
-static void almanac_free(Almanac* almanac) {
-    if (almanac != nullptr) {
-        scu_list_free(almanac->seeds);
+static void almanac_delete(Almanac* almanac) {
+    if (almanac) {
+        scu_list_delete(almanac->seeds);
         almanac->seeds = nullptr;
         Map* map;
         SCU_ARRAY_FOREACH(map, almanac->maps) {
-            scu_list_free(map->mappings);
+            scu_list_delete(map->mappings);
             map->mappings = nullptr;
         }
     }
@@ -140,7 +131,7 @@ static void almanac_free(Almanac* almanac) {
  * @return `SCU_ERROR_NONE` on success, or an appropriate error code on failure.
  */
 static ScuError almanac_parse(Almanac* almanac) {
-    SCU_ASSERT(almanac != nullptr);
+    SCU_ASSERT(almanac);
     *almanac = (Almanac) { };
     ScuError error;
     char* line = nullptr;
@@ -148,7 +139,7 @@ static ScuError almanac_parse(Almanac* almanac) {
     Map* currentMap = nullptr;
     while ((error = scu_readln(&line, &size)) == SCU_ERROR_NONE) {
         if ((line[0] >= '0') && (line[0] <= '9')) {
-            if (currentMap == nullptr) {
+            if (!currentMap) {
                 error = SCU_ERROR_INVALID_FORMAT;
                 goto fail;
             }
@@ -176,12 +167,12 @@ static ScuError almanac_parse(Almanac* almanac) {
         else if (scu_str_starts_with(line, "seeds: ")) {
             // There must be only one seeds line, so check if we already parsed
             // one earlier and fail if so.
-            if (almanac->seeds != nullptr) {
+            if (almanac->seeds) {
                 error = SCU_ERROR_INVALID_FORMAT;
                 goto fail;
             }
-            almanac->seeds = scu_list_new(SCU_SIZEOF(i64));
-            if (almanac->seeds == nullptr) {
+            almanac->seeds = scu_list_new(i64);
+            if (!almanac->seeds) {
                 error = SCU_ERROR_OUT_OF_MEMORY;
                 goto fail;
             }
@@ -189,7 +180,9 @@ static ScuError almanac_parse(Almanac* almanac) {
             temp += scu_strlen("seeds: ");
             i64 seed;
             isize read;
-            while (scu_sscanf(temp, "%" I64_SCND "%" ISIZE_SCNN, &seed, &read) == 1) {
+            while (
+                scu_sscanf(temp, "%" I64_SCND "%" ISIZE_SCNN, &seed, &read) == 1
+            ) {
                 error = scu_list_add(&almanac->seeds, &seed);
                 if (error != SCU_ERROR_NONE) {
                     goto fail;
@@ -204,14 +197,12 @@ static ScuError almanac_parse(Almanac* almanac) {
                     matchedMap = true;
                     // There must be only one of each map, so check if we
                     // already parsed one earlier and fail if so.
-                    if (almanac->maps[i].mappings != nullptr) {
+                    if (almanac->maps[i].mappings) {
                         error = SCU_ERROR_INVALID_FORMAT;
                         goto fail;
                     }
-                    almanac->maps[i].mappings = scu_list_new(
-                        SCU_SIZEOF(Mapping)
-                    );
-                    if (almanac->maps[i].mappings == nullptr) {
+                    almanac->maps[i].mappings = scu_list_new(Mapping);
+                    if (!almanac->maps[i].mappings) {
                         error = SCU_ERROR_OUT_OF_MEMORY;
                         goto fail;
                     }
@@ -226,17 +217,17 @@ static ScuError almanac_parse(Almanac* almanac) {
         }
     }
 fail:
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     if (error == SCU_ERROR_END_OF_FILE) {
         error = SCU_ERROR_NONE;
         // Check that we actually parsed the seeds and all maps.
-        if (almanac->seeds == nullptr) {
+        if (!almanac->seeds) {
             error = SCU_ERROR_INVALID_FORMAT;
         }
         else {
             const Map* map;
             SCU_ARRAY_FOREACH(map, almanac->maps) {
-                if (map->mappings == nullptr) {
+                if (!map->mappings) {
                     error = SCU_ERROR_INVALID_FORMAT;
                     break;
                 }
@@ -244,7 +235,7 @@ fail:
         }
     }
     else {
-        almanac_free(almanac);
+        almanac_delete(almanac);
         *almanac = (Almanac) { };
     }
     return error;
@@ -260,7 +251,7 @@ fail:
  * @return The lowest location of any single seed in the specified almanac.
  */
 static i64 almanac_lowest_location_single(const Almanac* almanac) {
-    SCU_ASSERT(almanac != nullptr);
+    SCU_ASSERT(almanac);
     SCU_ASSERT(scu_list_count(almanac->seeds) > 0);
     i64 lowestLocation = I64_MAX;
     const i64* seed;
@@ -295,12 +286,12 @@ static i64 almanac_lowest_location_single(const Almanac* almanac) {
  * @return The lowest location of any seed range in the specified almanac.
  */
 static i64 almanac_lowest_location_ranges(const Almanac* almanac) {
-    SCU_ASSERT(almanac != nullptr);
+    SCU_ASSERT(almanac);
     isize count = scu_list_count(almanac->seeds);
-    SCU_ASSERT((count > 0) && ((count % 2) == 0));
+    SCU_ASSERT((count > 0) && (count % 2 == 0));
     i64 lowestLocation = I64_MAX;
-    ScuStack* oldRanges = scu_stack_new(SCU_SIZEOF(Range));
-    ScuStack* newRanges = scu_stack_new(SCU_SIZEOF(Range));
+    ScuStack* oldRanges = scu_stack_new(Range);
+    ScuStack* newRanges = scu_stack_new(Range);
     for (isize i = 0; i < count; i += 2) {
         scu_stack_clear(oldRanges);
         Range oldRange = {
@@ -359,8 +350,8 @@ static i64 almanac_lowest_location_ranges(const Almanac* almanac) {
             lowestLocation = SCU_MIN(lowestLocation, range->src);
         }
     }
-    scu_stack_free(newRanges);
-    scu_stack_free(oldRanges);
+    scu_stack_delete(newRanges);
+    scu_stack_delete(oldRanges);
     return lowestLocation;
 }
 
@@ -385,6 +376,6 @@ int main() {
         "The lowest location of the seed ranges is %" I64_PRID ".\n",
         lowestLocationRanges
     );
-    almanac_free(&almanac);
+    almanac_delete(&almanac);
     return EXIT_SUCCESS;
 }

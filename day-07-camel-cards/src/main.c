@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/compare.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a card in a deck for Camel Cards. */
@@ -66,7 +59,7 @@ typedef struct Hand {
  * @return `true` if a card was successfully parsed, otherwise `false`.
  */
 static inline bool card_parse(char c, Card* card) {
-    SCU_ASSERT(card != nullptr);
+    SCU_ASSERT(card);
     switch (c) {
         case '2':
             *card = CARD_TWO;
@@ -119,7 +112,7 @@ static inline bool card_parse(char c, Card* card) {
  * @param[in, out] hand The hand to classify.
  */
 static inline void hand_classify(Hand* hand) {
-    SCU_ASSERT(hand != nullptr);
+    SCU_ASSERT(hand);
     i32 counts[CARD_ACE + 1] = { };
     Card* card;
     SCU_ARRAY_FOREACH(card, hand->cards) {
@@ -170,7 +163,7 @@ static inline void hand_classify(Hand* hand) {
  * @param[in, out] hand The hand to classify.
  */
 static inline void hand_classify_with_joker(Hand* hand) {
-    SCU_ASSERT(hand != nullptr);
+    SCU_ASSERT(hand);
     i32 counts[CARD_ACE + 1] = { };
     Card* card;
     SCU_ARRAY_FOREACH(card, hand->cards) {
@@ -265,9 +258,9 @@ static inline void hand_classify_with_joker(Hand* hand) {
  * @return `SCU_ERROR_NONE` on success, or an appropriate error code on failure.
  */
 static ScuError parse_hands(Hand** hands) {
-    SCU_ASSERT(hands != nullptr);
-    *hands = scu_list_new(SCU_SIZEOF(Hand));
-    if (*hands == nullptr) {
+    SCU_ASSERT(hands);
+    *hands = scu_list_new(Hand);
+    if (!*hands) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     ScuError error;
@@ -299,11 +292,11 @@ static ScuError parse_hands(Hand** hands) {
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    scu_list_free(*hands);
+    SCU_ARRAY_DELETE(line, size);
+    scu_list_delete(*hands);
     *hands = nullptr;
     return error;
 }
@@ -317,8 +310,8 @@ fail:
  * or a positive value if `a` is greater than `b`.
  */
 static int compare_hands(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const Hand* l = a;
     const Hand* r = b;
     int cmp = (l->type > r->type) - (l->type < r->type);
@@ -343,7 +336,7 @@ static int compare_hands(const void* a, const void* b) {
  * @return The total winnings for the specified list of hands.
  */
 static i32 total_winnings(Hand* hands) {
-    SCU_ASSERT(hands != nullptr);
+    SCU_ASSERT(hands);
     scu_list_sort(hands, compare_hands);
     i32 totalWinnings = 0;
     for (isize i = 0; i < scu_list_count(hands); i++) {
@@ -364,7 +357,7 @@ static i32 total_winnings(Hand* hands) {
  * joker rule.
  */
 static i32 total_winnings_with_joker(Hand* hands) {
-    SCU_ASSERT(hands != nullptr);
+    SCU_ASSERT(hands);
     Hand* hand;
     SCU_LIST_FOREACH(hand, hands) {
         hand_classify_with_joker(hand);
@@ -395,6 +388,6 @@ int main() {
         "Using the new joker rule, the total winnings are %" I32_PRID ".\n",
         totalWinningsWithJoker
     );
-    scu_list_free(hands);
+    scu_list_delete(hands);
     return EXIT_SUCCESS;
 }

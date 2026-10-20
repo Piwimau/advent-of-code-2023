@@ -1,14 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/equal.h>
-#include <scu/hash-map.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a field on a platform of a parabolic reflector dish. */
@@ -52,7 +44,7 @@ static constexpr isize TARGET_CYCLES = 1'000'000'000;
  * @return `true` if a field was successfully parsed, otherwise `false`.
  */
 static inline bool field_parse(char c, Field* field) {
-    SCU_ASSERT(field != nullptr);
+    SCU_ASSERT(field);
     switch (c) {
         case '.':
             *field = FIELD_EMPTY;
@@ -82,9 +74,9 @@ static inline bool field_parse(char c, Field* field) {
  *
  * @param[in, out] platform The platform to deallocate.
  */
-static inline void platform_free(Platform* platform) {
-    if (platform != nullptr) {
-        scu_list_free(platform->fields);
+static inline void platform_delete(Platform* platform) {
+    if (platform) {
+        scu_list_delete(platform->fields);
         platform->fields = nullptr;
     }
 }
@@ -118,11 +110,11 @@ static inline void platform_free(Platform* platform) {
  * appropriate error code.
  */
 static ScuError platform_parse(Platform* platform) {
-    SCU_ASSERT(platform != nullptr);
+    SCU_ASSERT(platform);
     platform->width = 0;
     platform->height = 0;
-    platform->fields = scu_list_new(SCU_SIZEOF(Field));
-    if (platform->fields == nullptr) {
+    platform->fields = scu_list_new(Field);
+    if (!platform->fields) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     bool foundWidth = false;
@@ -161,11 +153,11 @@ static ScuError platform_parse(Platform* platform) {
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    platform_free(platform);
+    SCU_ARRAY_DELETE(line, size);
+    platform_delete(platform);
     return error;
 }
 
@@ -181,14 +173,12 @@ static inline ScuError platform_clone(
     const Platform* restrict platform,
     Platform* restrict clone
 ) {
-    SCU_ASSERT(platform != nullptr);
-    SCU_ASSERT(clone != nullptr);
+    SCU_ASSERT(platform);
+    SCU_ASSERT(clone);
     clone->width = platform->width;
     clone->height = platform->height;
     clone->fields = scu_list_clone(platform->fields);
-    return (clone->fields != nullptr)
-        ? SCU_ERROR_NONE
-        : SCU_ERROR_OUT_OF_MEMORY;
+    return clone->fields ? SCU_ERROR_NONE : SCU_ERROR_OUT_OF_MEMORY;
 }
 
 /**
@@ -198,7 +188,7 @@ static inline ScuError platform_clone(
  * @param[in, out] platform The platform to tilt.
  */
 static inline void platform_tilt_north(Platform* platform) {
-    SCU_ASSERT(platform != nullptr);
+    SCU_ASSERT(platform);
     isize width = platform->width;
     isize height = platform->height;
     Field* fields = platform->fields;
@@ -225,7 +215,7 @@ static inline void platform_tilt_north(Platform* platform) {
  * @param[in, out] platform The platform to tilt.
  */
 static inline void platform_tilt_west(Platform* platform) {
-    SCU_ASSERT(platform != nullptr);
+    SCU_ASSERT(platform);
     isize width = platform->width;
     isize height = platform->height;
     Field* fields = platform->fields;
@@ -252,7 +242,7 @@ static inline void platform_tilt_west(Platform* platform) {
  * @param[in, out] platform The platform to tilt.
  */
 static inline void platform_tilt_south(Platform* platform) {
-    SCU_ASSERT(platform != nullptr);
+    SCU_ASSERT(platform);
     isize width = platform->width;
     isize height = platform->height;
     Field* fields = platform->fields;
@@ -279,7 +269,7 @@ static inline void platform_tilt_south(Platform* platform) {
  * @param[in, out] platform The platform to tilt.
  */
 static inline void platform_tilt_east(Platform* platform) {
-    SCU_ASSERT(platform != nullptr);
+    SCU_ASSERT(platform);
     isize width = platform->width;
     isize height = platform->height;
     Field* fields = platform->fields;
@@ -307,7 +297,7 @@ static inline void platform_tilt_east(Platform* platform) {
  * @return The total load on the north support beams of the specified platform.
  */
 static inline isize platform_load(const Platform* platform) {
-    SCU_ASSERT(platform != nullptr);
+    SCU_ASSERT(platform);
     isize width = platform->width;
     isize height = platform->height;
     const Field* fields = platform->fields;
@@ -331,7 +321,7 @@ static inline isize platform_load(const Platform* platform) {
  * @return A hash for the specified platform.
  */
 static usize platform_hash(const void* value) {
-    SCU_ASSERT(value != nullptr);
+    SCU_ASSERT(value);
     const Platform* platform = value;
     usize hash = 0;
     hash = scu_hash_combine(hash, scu_hash_isize(&platform->width));
@@ -357,8 +347,8 @@ static usize platform_hash(const void* value) {
  * @return `true` if the specified platforms are equal, otherwise `false`.
  */
 static bool platform_equal(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const Platform* l = a;
     const Platform* r = b;
     return (l->width == r->width) && (l->height == r->height)
@@ -380,21 +370,21 @@ static bool platform_equal(const void* a, const void* b) {
  * of cycles, or `-1` if an error occurred.
  */
 static isize platform_load_after(Platform* platform, isize cycles) {
-    SCU_ASSERT(platform != nullptr);
+    SCU_ASSERT(platform);
     SCU_ASSERT(cycles > 0);
     ScuHashMap* cache = scu_hash_map_new(
-        SCU_SIZEOF(Platform),
-        SCU_SIZEOF(isize),
+        Platform,
+        isize,
         platform_hash,
         platform_equal,
         scu_equal_isize
     );
-    if (cache == nullptr) {
+    if (!cache) {
         return -1;
     }
-    Platform* history = scu_list_new(SCU_SIZEOF(Platform));
-    if (history == nullptr) {
-        scu_hash_map_free(cache);
+    Platform* history = scu_list_new(Platform);
+    if (!history) {
+        scu_hash_map_delete(cache);
         return -1;
     }
     isize totalLoad = -1;
@@ -416,10 +406,10 @@ static isize platform_load_after(Platform* platform, isize cycles) {
             break;
         }
         if (scu_list_add(&history, &clone) != SCU_ERROR_NONE) {
-            // If we fail to add the clone to the history, we need to free it
-            // manually here, as it won't be freed by the cleanup code at the
-            // end of the function.
-            platform_free(&clone);
+            // If we fail to add the clone to the history, we need to deallocate
+            // it manually here, as it won't be deallocated by the cleanup code
+            // at the end of the function.
+            platform_delete(&clone);
             break;
         }
         if (scu_hash_map_add(cache, &clone, &cycle) != SCU_ERROR_NONE) {
@@ -428,10 +418,10 @@ static isize platform_load_after(Platform* platform, isize cycles) {
     }
     Platform* p;
     SCU_LIST_FOREACH(p, history) {
-        platform_free(p);
+        platform_delete(p);
     }
-    scu_list_free(history);
-    scu_hash_map_free(cache);
+    scu_list_delete(history);
+    scu_hash_map_delete(cache);
     return totalLoad;
 }
 
@@ -456,7 +446,7 @@ int main() {
             "An error occurred while cloning the platform (code %d).\n",
             error
         );
-        platform_free(&platform);
+        platform_delete(&platform);
         return EXIT_FAILURE;
     }
     platform_tilt_north(&platform);
@@ -471,7 +461,7 @@ int main() {
             ISIZE_PRID ".\n",
         cyclesLoad
     );
-    platform_free(&platform);
-    platform_free(&clone);
+    platform_delete(&platform);
+    platform_delete(&clone);
     return EXIT_SUCCESS;
 }

@@ -1,12 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a digit. */
@@ -61,9 +55,9 @@ static inline bool find_calibration_values(
     i32* restrict calibrationValue,
     i32* restrict alnumCalibrationValue
 ) {
-    SCU_ASSERT(s != nullptr);
-    SCU_ASSERT(calibrationValue != nullptr);
-    SCU_ASSERT(alnumCalibrationValue != nullptr);
+    SCU_ASSERT(s);
+    SCU_ASSERT(calibrationValue);
+    SCU_ASSERT(alnumCalibrationValue);
     i32 firstDigit = -1;
     i32 lastDigit = -1;
     i32 firstAlnumDigit = -1;
@@ -128,13 +122,13 @@ int main() {
                 "The line '%s' does not contain both calibration values.\n",
                 line
             );
-            scu_free(line);
+            SCU_ARRAY_DELETE(line, size);
             return EXIT_FAILURE;
         }
         sumOfCalibrationValues += calibrationValue;
         sumOfAlnumCalibrationValues += alnumCalibrationValue;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     if (error != SCU_ERROR_END_OF_FILE) {
         scu_fprintf(
             SCU_STDERR,

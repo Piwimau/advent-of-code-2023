@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/hash-map.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/queue.h>
-#include <scu/string.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents an edge in a graph. */
@@ -53,7 +46,7 @@ static constexpr isize EDGES_CUT = 3;
  * @return A hash for the specified name.
  */
 static usize name_hash(const void* value) {
-    SCU_ASSERT(value != nullptr);
+    SCU_ASSERT(value);
     const char (*name)[MAX_NAME_SIZE] = value;
     const char* tmp = *name;
     return scu_hash_str(&tmp);
@@ -69,8 +62,8 @@ static usize name_hash(const void* value) {
  * @return `true` if the specified names are equal, otherwise `false`.
  */
 static bool name_equal(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const char (*l)[MAX_NAME_SIZE] = a;
     const char (*r)[MAX_NAME_SIZE] = b;
     return scu_equal_str(&l, &r);
@@ -113,20 +106,20 @@ static bool name_equal(const void* a, const void* b) {
  * @return `SCU_ERROR_NONE` on success, otherwise an appropriate error code.
  */
 static ScuError graph_parse(Graph* graph) {
-    SCU_ASSERT(graph != nullptr);
+    SCU_ASSERT(graph);
     ScuHashMap* nameToIdx = scu_hash_map_new(
-        SCU_SIZEOF(char[MAX_NAME_SIZE]),
-        SCU_SIZEOF(i32),
+        char[MAX_NAME_SIZE],
+        i32,
         name_hash,
         name_equal,
         scu_equal_i32
     );
-    if (nameToIdx == nullptr) {
+    if (!nameToIdx) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
-    Edge* edges = scu_list_new(SCU_SIZEOF(Edge));
-    if (edges == nullptr) {
-        scu_hash_map_free(nameToIdx);
+    Edge* edges = scu_list_new(Edge);
+    if (!edges) {
+        scu_hash_map_delete(nameToIdx);
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -181,17 +174,14 @@ static ScuError graph_parse(Graph* graph) {
             rest += read;
         }
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
     graph->nodes = (i32) scu_hash_map_count(nameToIdx);
-    scu_hash_map_free(nameToIdx);
-    graph->capacities = scu_calloc(
-        graph->nodes * graph->nodes,
-        SCU_SIZEOF(i32)
-    );
-    if (graph->capacities == nullptr) {
+    scu_hash_map_delete(nameToIdx);
+    graph->capacities = SCU_ARRAY_NEW_ZEROED(i32, graph->nodes * graph->nodes);
+    if (!graph->capacities) {
         error = SCU_ERROR_OUT_OF_MEMORY;
         goto fail;
     }
@@ -200,12 +190,12 @@ static ScuError graph_parse(Graph* graph) {
         graph->capacities[edge->src * graph->nodes + edge->dst]++;
         graph->capacities[edge->dst * graph->nodes + edge->src]++;
     }
-    scu_list_free(edges);
+    scu_list_delete(edges);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    scu_list_free(edges);
-    scu_hash_map_free(nameToIdx);
+    SCU_ARRAY_DELETE(line, size);
+    scu_list_delete(edges);
+    scu_hash_map_delete(nameToIdx);
     return error;
 }
 
@@ -221,9 +211,9 @@ fail:
  *
  * @param[in, out] graph The graph to deallocate.
  */
-static inline void graph_free(Graph* graph) {
-    if (graph != nullptr) {
-        scu_free(graph->capacities);
+static inline void graph_delete(Graph* graph) {
+    if (graph) {
+        SCU_ARRAY_DELETE(graph->capacities, graph->nodes * graph->nodes);
     }
 }
 
@@ -256,13 +246,13 @@ static inline bool find_path(
     bool* visited,
     ScuQueue* queue
 ) {
-    SCU_ASSERT(residuals != nullptr);
+    SCU_ASSERT(residuals);
     SCU_ASSERT(count >= 0);
     SCU_ASSERT((src >= 0) && (src < count));
     SCU_ASSERT((dst >= 0) && (dst < count));
-    SCU_ASSERT(parent != nullptr);
-    SCU_ASSERT(visited != nullptr);
-    SCU_ASSERT(queue != nullptr);
+    SCU_ASSERT(parent);
+    SCU_ASSERT(visited);
+    SCU_ASSERT(queue);
     scu_memset(visited, 0, count * SCU_SIZEOF(bool));
     scu_queue_clear(queue);
     parent[src] = src;
@@ -305,11 +295,11 @@ static inline i32 count_reachable(
     bool* visited,
     ScuQueue* queue
 ) {
-    SCU_ASSERT(residuals != nullptr);
+    SCU_ASSERT(residuals);
     SCU_ASSERT(count >= 0);
     SCU_ASSERT((src >= 0) && (src < count));
-    SCU_ASSERT(visited != nullptr);
-    SCU_ASSERT(queue != nullptr);
+    SCU_ASSERT(visited);
+    SCU_ASSERT(queue);
     scu_memset(visited, 0, count * SCU_SIZEOF(bool));
     scu_queue_clear(queue);
     visited[src] = true;
@@ -336,14 +326,13 @@ static inline i32 count_reachable(
  * @return The product of the sizes of the two groups of nodes.
  */
 static i32 graph_product_of_group_sizes(const Graph* graph) {
-    SCU_ASSERT(graph != nullptr);
+    SCU_ASSERT(graph);
     i32 product = -1;
-    i32* residuals = scu_malloc(graph->nodes * graph->nodes * SCU_SIZEOF(i32));
-    i32* parent = scu_malloc(graph->nodes * SCU_SIZEOF(i32));
-    bool* visited = scu_malloc(graph->nodes * SCU_SIZEOF(bool));
-    ScuQueue* queue = scu_queue_new(SCU_SIZEOF(i32));
-    if ((residuals == nullptr) || (parent == nullptr) || (visited == nullptr)
-        || (queue == nullptr)) {
+    i32* residuals = SCU_ARRAY_NEW(i32, graph->nodes * graph->nodes);
+    i32* parent = SCU_ARRAY_NEW(i32, graph->nodes);
+    bool* visited = SCU_ARRAY_NEW(bool, graph->nodes);
+    ScuQueue* queue = scu_queue_new(i32);
+    if (!residuals || !parent || !visited || !queue) {
         goto end;
     }
     for (i32 sink = 1; sink < graph->nodes; sink++) {
@@ -385,10 +374,10 @@ static i32 graph_product_of_group_sizes(const Graph* graph) {
         }
     }
 end:
-    scu_queue_free(queue);
-    scu_free(visited);
-    scu_free(parent);
-    scu_free(residuals);
+    scu_queue_delete(queue);
+    SCU_ARRAY_DELETE(visited, graph->nodes);
+    SCU_ARRAY_DELETE(parent, graph->nodes);
+    SCU_ARRAY_DELETE(residuals, graph->nodes * graph->nodes);
     return product;
 }
 
@@ -405,6 +394,6 @@ int main() {
     }
     i32 product = graph_product_of_group_sizes(&graph);
     scu_printf("The product of the sizes of the groups is %d.\n", product);
-    graph_free(&graph);
+    graph_delete(&graph);
     return EXIT_SUCCESS;
 }

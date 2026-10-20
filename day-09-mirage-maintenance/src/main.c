@@ -1,12 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/stack.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a history of environmental values. */
@@ -61,10 +55,10 @@ static ScuError history_parse(
     const char* restrict line,
     History* restrict history
 ) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(history != nullptr);
-    history->values = scu_list_new(SCU_SIZEOF(i32));
-    if (history->values == nullptr) {
+    SCU_ASSERT(line);
+    SCU_ASSERT(history);
+    history->values = scu_list_new(i32);
+    if (!history->values) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     ScuError error = SCU_ERROR_NONE;
@@ -86,7 +80,7 @@ static ScuError history_parse(
     }
     return SCU_ERROR_NONE;
 fail:
-    scu_list_free(history->values);
+    scu_list_delete(history->values);
     history->values = nullptr;
     return error;
 }
@@ -99,7 +93,7 @@ fail:
  * `false`.
  */
 static inline bool history_contains_non_zero(const History* history) {
-    SCU_ASSERT(history != nullptr);
+    SCU_ASSERT(history);
     i32* value;
     SCU_LIST_FOREACH(value, history->values) {
         if (*value != 0) {
@@ -122,8 +116,8 @@ static inline void history_replace_with(
     History* restrict dest,
     const History* restrict src
 ) {
-    SCU_ASSERT(dest != nullptr);
-    SCU_ASSERT(src != nullptr);
+    SCU_ASSERT(dest);
+    SCU_ASSERT(src);
     scu_list_clear(dest->values);
     i32* value;
     SCU_LIST_FOREACH(value, src->values) {
@@ -147,8 +141,8 @@ static inline void history_calc_differences(
     History* restrict dest,
     const History* restrict src
 ) {
-    SCU_ASSERT(dest != nullptr);
-    SCU_ASSERT(src != nullptr);
+    SCU_ASSERT(dest);
+    SCU_ASSERT(src);
     isize count = scu_list_count(src->values);
     SCU_ASSERT(count > 1);
     scu_list_clear(dest->values);
@@ -167,7 +161,7 @@ static inline void history_calc_differences(
  * @return The first value in `history`.
  */
 static inline i32 history_first_value(const History* history) {
-    SCU_ASSERT(history != nullptr);
+    SCU_ASSERT(history);
     SCU_ASSERT(scu_list_count(history->values) > 0);
     return history->values[0];
 }
@@ -181,7 +175,7 @@ static inline i32 history_first_value(const History* history) {
  * @return The last value in `history`.
  */
 static inline i32 history_last_value(const History* history) {
-    SCU_ASSERT(history != nullptr);
+    SCU_ASSERT(history);
     isize count = scu_list_count(history->values);
     SCU_ASSERT(count > 0);
     return history->values[count - 1];
@@ -194,8 +188,8 @@ static inline i32 history_last_value(const History* history) {
  * @param[in] b The second history.
  */
 static inline void history_swap(History* restrict a, History* restrict b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     History temp = *a;
     *a = *b;
     *b = temp;
@@ -213,9 +207,9 @@ static inline void history_swap(History* restrict a, History* restrict b) {
  *
  * @param[in, out] history The history to deallocate all resources of.
  */
-static void history_free(History* history) {
-    if (history != nullptr) {
-        scu_list_free(history->values);
+static void history_delete(History* history) {
+    if (history) {
+        scu_list_delete(history->values);
         history->values = nullptr;
     }
 }
@@ -232,13 +226,13 @@ static void history_free(History* history) {
  *
  * @param[in, out] report The report to deallocate all resources of.
  */
-static void report_free(Report* report) {
-    if (report != nullptr) {
+static void report_delete(Report* report) {
+    if (report) {
         History* history;
         SCU_LIST_FOREACH(history, report->histories) {
-            history_free(history);
+            history_delete(history);
         }
-        scu_list_free(report->histories);
+        scu_list_delete(report->histories);
         report->histories = nullptr;
     }
 }
@@ -263,9 +257,9 @@ static void report_free(Report* report) {
  * @return `SCU_ERROR_NONE` on success, or an appropriate error code on failure.
  */
 static ScuError report_parse(Report* report) {
-    SCU_ASSERT(report != nullptr);
-    report->histories = scu_list_new(SCU_SIZEOF(History));
-    if (report->histories == nullptr) {
+    SCU_ASSERT(report);
+    report->histories = scu_list_new(History);
+    if (!report->histories) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -279,18 +273,18 @@ static ScuError report_parse(Report* report) {
         }
         error = scu_list_add(&report->histories, &history);
         if (error != SCU_ERROR_NONE) {
-            history_free(&history);
+            history_delete(&history);
             goto fail;
         }
     }
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    report_free(report);
+    SCU_ARRAY_DELETE(line, size);
+    report_delete(report);
     return error;
 }
 
@@ -303,17 +297,17 @@ fail:
  * histories.
  */
 static Extrapolation report_extrapolate(const Report* report) {
-    SCU_ASSERT(report != nullptr);
-    History oldHistory = { .values = scu_list_new(SCU_SIZEOF(i32)) };
-    if (oldHistory.values == nullptr) {
+    SCU_ASSERT(report);
+    History oldHistory = { .values = scu_list_new(i32) };
+    if (!oldHistory.values) {
         goto oldHistoryAllocFail;
     }
-    History newHistory = { .values = scu_list_new(SCU_SIZEOF(i32)) };
-    if (newHistory.values == nullptr) {
+    History newHistory = { .values = scu_list_new(i32) };
+    if (!newHistory.values) {
         goto newHistoryAllocFail;
     }
-    ScuStack* extrapolations = scu_stack_new(SCU_SIZEOF(Extrapolation));
-    if (extrapolations == nullptr) {
+    ScuStack* extrapolations = scu_stack_new(Extrapolation);
+    if (!extrapolations) {
         goto extrapolationsAllocFail;
     }
     Extrapolation result = { };
@@ -339,14 +333,14 @@ static Extrapolation report_extrapolate(const Report* report) {
         result.prev += prev;
         result.next += next;
     }
-    scu_stack_free(extrapolations);
-    history_free(&newHistory);
-    history_free(&oldHistory);
+    scu_stack_delete(extrapolations);
+    history_delete(&newHistory);
+    history_delete(&oldHistory);
     return result;
 extrapolationsAllocFail:
-    history_free(&newHistory);
+    history_delete(&newHistory);
 newHistoryAllocFail:
-    history_free(&oldHistory);
+    history_delete(&oldHistory);
 oldHistoryAllocFail:
     return (Extrapolation) { .prev = -1, .next = -1 };
 }
@@ -371,6 +365,6 @@ int main() {
         "The sum of the previous values is %" I32_PRID ".\n",
         extrapolation.prev
     );
-    report_free(&report);
+    report_delete(&report);
     return EXIT_SUCCESS;
 }

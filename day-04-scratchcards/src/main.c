@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/hash-set.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a scratchcard. */
@@ -39,16 +32,23 @@ typedef struct Card {
  * @return `true` if a card was successfully parsed, otherwise `false`.
  */
 static bool card_parse(const char* restrict line, Card* restrict card) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(card != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(card);
     i32 number;
     isize read;
-    if (scu_sscanf(line, "Card %" I32_SCND ": %" ISIZE_SCNN, &number, &read) != 1) {
+    if (
+        scu_sscanf(
+            line,
+            "Card %" I32_SCND ": %" ISIZE_SCNN,
+            &number,
+            &read
+        ) != 1
+    ) {
         return false;
     }
     line += read;
     ScuHashSet* winningNumbers = scu_hash_set_new(
-        SCU_SIZEOF(i32),
+        i32,
         scu_hash_i32,
         scu_equal_i32
     );
@@ -57,7 +57,7 @@ static bool card_parse(const char* restrict line, Card* restrict card) {
         line += read;
     }
     if (scu_sscanf(line, " | %" ISIZE_SCNN, &read) != 0) {
-        scu_hash_set_free(winningNumbers);
+        scu_hash_set_delete(winningNumbers);
         return false;
     }
     line += read;
@@ -68,7 +68,7 @@ static bool card_parse(const char* restrict line, Card* restrict card) {
         }
         line += read;
     }
-    scu_hash_set_free(winningNumbers);
+    scu_hash_set_delete(winningNumbers);
     return true;
 }
 
@@ -79,7 +79,7 @@ static bool card_parse(const char* restrict line, Card* restrict card) {
  * @return The total number of points won by the specified list of cards.
  */
 static i32 total_points(const Card* cards) {
-    SCU_ASSERT(cards != nullptr);
+    SCU_ASSERT(cards);
     i32 totalPoints = 0;
     const Card* card;
     SCU_LIST_FOREACH(card, cards) {
@@ -95,9 +95,9 @@ static i32 total_points(const Card* cards) {
  * @return The total number of cards won by the specified list of cards.
  */
 static i32 total_cards(const Card* cards) {
-    SCU_ASSERT(cards != nullptr);
+    SCU_ASSERT(cards);
     isize count = scu_list_count(cards);
-    i32* cardCounts = scu_list_new_with_capacity(SCU_SIZEOF(i32), count);
+    i32* cardCounts = scu_list_new_with_capacity(i32, count);
     for (isize i = 0; i < count; i++) {
         scu_list_add(&cardCounts, &(i32) { 1 });
     }
@@ -111,7 +111,7 @@ static i32 total_cards(const Card* cards) {
     SCU_LIST_FOREACH(cardCount, cardCounts) {
         totalCards += *cardCount;
     }
-    scu_list_free(cardCounts);
+    scu_list_delete(cardCounts);
     return totalCards;
 }
 
@@ -119,7 +119,7 @@ int main() {
     ScuError error = SCU_ERROR_NONE;
     char* line = nullptr;
     isize size = 0;
-    Card* cards = scu_list_new(SCU_SIZEOF(Card));
+    Card* cards = scu_list_new(Card);
     while ((error = scu_readln(&line, &size)) == SCU_ERROR_NONE) {
         // Replace the newline (if present) to simplify parsing and avoid an
         // ugly line break if an error occurs.
@@ -134,26 +134,26 @@ int main() {
                 "The line '%s' does not represent a valid card.\n",
                 line
             );
-            scu_list_free(cards);
-            scu_free(line);
+            scu_list_delete(cards);
+            SCU_ARRAY_DELETE(line, size);
             return EXIT_FAILURE;
         }
         scu_list_add(&cards, &card);
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     if (error != SCU_ERROR_END_OF_FILE) {
         scu_fprintf(
             SCU_STDERR,
             "An error occurred while reading the input file (code %d).\n",
             error
         );
-        scu_list_free(cards);
+        scu_list_delete(cards);
         return EXIT_FAILURE;
     }
     i32 totalPoints = total_points(cards);
     i32 totalCards = total_cards(cards);
     scu_printf("The total number of points is %" I32_PRID ".\n", totalPoints);
     scu_printf("The total number of cards is %" I32_PRID ".\n", totalCards);
-    scu_list_free(cards);
+    scu_list_delete(cards);
     return EXIT_SUCCESS;
 }

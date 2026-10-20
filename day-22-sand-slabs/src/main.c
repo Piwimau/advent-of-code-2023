@@ -1,14 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/math.h>
-#include <scu/memory.h>
-#include <scu/queue.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a three-dimensional position. */
@@ -95,8 +87,8 @@ static inline bool brick_parse(
     const char* restrict line,
     Brick* restrict brick
 ) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(brick != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(brick);
     isize read = scu_sscanf(
         line,
         "%" ISIZE_SCND ",%" ISIZE_SCND ",%" ISIZE_SCND "~%" ISIZE_SCND
@@ -118,9 +110,9 @@ static inline bool brick_parse(
  *
  * @param[in, out] bricks The list of bricks to deallocate.
  */
-static inline void bricks_free(Brick* bricks) {
-    if (bricks != nullptr) {
-        scu_list_free(bricks);
+static inline void bricks_delete(Brick* bricks) {
+    if (bricks) {
+        scu_list_delete(bricks);
     }
 }
 
@@ -148,9 +140,9 @@ static inline void bricks_free(Brick* bricks) {
  * @return `SCU_ERROR_NONE` on success, otherwise an appropriate error code.
  */
 static ScuError bricks_parse(Brick** bricks) {
-    SCU_ASSERT(bricks != nullptr);
-    *bricks = scu_list_new(SCU_SIZEOF(Brick));
-    if (*bricks == nullptr) {
+    SCU_ASSERT(bricks);
+    *bricks = scu_list_new(Brick);
+    if (!*bricks) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -174,11 +166,11 @@ static ScuError bricks_parse(Brick** bricks) {
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    bricks_free(*bricks);
+    SCU_ARRAY_DELETE(line, size);
+    bricks_delete(*bricks);
     *bricks = nullptr;
     return error;
 }
@@ -193,8 +185,8 @@ fail:
  * than that of `b`.
  */
 static int bricks_compare_by_min_z(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const Brick* l = a;
     const Brick* r = b;
     isize lMinZ = SCU_MIN(l->first.z, l->last.z);
@@ -212,10 +204,10 @@ static int bricks_compare_by_min_z(const void* a, const void* b) {
  * @return `SCU_ERROR_NONE` on success, otherwise an appropriate error code.
  */
 static ScuError bricks_settle(Brick* bricks) {
-    SCU_ASSERT(bricks != nullptr);
+    SCU_ASSERT(bricks);
     scu_list_sort(bricks, bricks_compare_by_min_z);
-    isize* settledBrickIndices = scu_list_new(SCU_SIZEOF(isize));
-    if (settledBrickIndices == nullptr) {
+    isize* settledBrickIndices = scu_list_new(isize);
+    if (!settledBrickIndices) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     for (isize i = 0; i < scu_list_count(bricks); i++) {
@@ -245,11 +237,11 @@ static ScuError bricks_settle(Brick* bricks) {
         brick->last.z = maxSettledZ + 1 + height;
         ScuError error = scu_list_add(&settledBrickIndices, &i);
         if (error != SCU_ERROR_NONE) {
-            scu_list_free(settledBrickIndices);
+            scu_list_delete(settledBrickIndices);
             return error;
         }
     }
-    scu_list_free(settledBrickIndices);
+    scu_list_delete(settledBrickIndices);
     return SCU_ERROR_NONE;
 }
 
@@ -265,21 +257,21 @@ static ScuError bricks_settle(Brick* bricks) {
  *
  * @param[in, out] supportGraph The support graph to deallocate.
  */
-static inline void support_graph_free(SupportGraph* supportGraph) {
-    if (supportGraph != nullptr) {
+static inline void support_graph_delete(SupportGraph* supportGraph) {
+    if (supportGraph) {
         isize count = scu_list_count(supportGraph->bricks);
         supportGraph->bricks = nullptr;
         for (isize i = 0; i < count; i++) {
-            scu_list_free(supportGraph->supports[i]);
+            scu_list_delete(supportGraph->supports[i]);
             supportGraph->supports[i] = nullptr;
         }
-        scu_free(supportGraph->supports);
+        SCU_ARRAY_DELETE(supportGraph->supports, count);
         supportGraph->supports = nullptr;
         for (isize i = 0; i < count; i++) {
-            scu_list_free(supportGraph->supportedBy[i]);
+            scu_list_delete(supportGraph->supportedBy[i]);
             supportGraph->supportedBy[i] = nullptr;
         }
-        scu_free(supportGraph->supportedBy);
+        SCU_ARRAY_DELETE(supportGraph->supportedBy, count);
         supportGraph->supportedBy = nullptr;
     }
 }
@@ -305,31 +297,31 @@ static ScuError bricks_build_support_graph(
     Brick* bricks,
     SupportGraph* supportGraph
 ) {
-    SCU_ASSERT(bricks != nullptr);
-    SCU_ASSERT(supportGraph != nullptr);
+    SCU_ASSERT(bricks);
+    SCU_ASSERT(supportGraph);
     ScuError error = bricks_settle(bricks);
     if (error != SCU_ERROR_NONE) {
         return error;
     }
     supportGraph->bricks = bricks;
     isize count = scu_list_count(bricks);
-    supportGraph->supports = scu_calloc(count, SCU_SIZEOF(isize*));
-    if (supportGraph->supports == nullptr) {
+    supportGraph->supports = SCU_ARRAY_NEW_ZEROED(isize*, count);
+    if (!supportGraph->supports) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
-    supportGraph->supportedBy = scu_calloc(count, SCU_SIZEOF(isize*));
-    if (supportGraph->supportedBy == nullptr) {
-        scu_free(supportGraph->supports);
+    supportGraph->supportedBy = SCU_ARRAY_NEW_ZEROED(isize*, count);
+    if (!supportGraph->supportedBy) {
+        SCU_ARRAY_DELETE(supportGraph->supports, count);
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     for (isize i = 0; i < count; i++) {
-        supportGraph->supports[i] = scu_list_new(SCU_SIZEOF(isize));
-        if (supportGraph->supports[i] == nullptr) {
+        supportGraph->supports[i] = scu_list_new(isize);
+        if (!supportGraph->supports[i]) {
             error = SCU_ERROR_OUT_OF_MEMORY;
             goto fail;
         }
-        supportGraph->supportedBy[i] = scu_list_new(SCU_SIZEOF(isize));
-        if (supportGraph->supportedBy[i] == nullptr) {
+        supportGraph->supportedBy[i] = scu_list_new(isize);
+        if (!supportGraph->supportedBy[i]) {
             error = SCU_ERROR_OUT_OF_MEMORY;
             goto fail;
         }
@@ -364,7 +356,7 @@ static ScuError bricks_build_support_graph(
     }
     return SCU_ERROR_NONE;
 fail:
-    support_graph_free(supportGraph);
+    support_graph_delete(supportGraph);
     return error;
 }
 
@@ -377,7 +369,7 @@ fail:
  * failure.
  */
 static isize support_graph_disintegratable(const SupportGraph* supportGraph) {
-    SCU_ASSERT(supportGraph != nullptr);
+    SCU_ASSERT(supportGraph);
     isize disintegratable = 0;
     for (isize i = 0; i < scu_list_count(supportGraph->bricks); i++) {
         bool isSafelyDisintegratable = true;
@@ -406,15 +398,15 @@ static isize support_graph_disintegratable(const SupportGraph* supportGraph) {
 static isize support_graph_chain_disintegrated(
     const SupportGraph* supportGraph
 ) {
-    SCU_ASSERT(supportGraph != nullptr);
+    SCU_ASSERT(supportGraph);
     isize count = scu_list_count(supportGraph->bricks);
-    isize* remainingSupports = scu_malloc(count * SCU_SIZEOF(isize));
-    if (remainingSupports == nullptr) {
+    isize* remainingSupports = SCU_ARRAY_NEW(isize, count);
+    if (!remainingSupports) {
         return -1;
     }
-    ScuQueue* queue = scu_queue_new(SCU_SIZEOF(isize));
-    if (queue == nullptr) {
-        scu_free(remainingSupports);
+    ScuQueue* queue = scu_queue_new(isize);
+    if (!queue) {
+        SCU_ARRAY_DELETE(remainingSupports, count);
         return -1;
     }
     isize totalDisintegrated = 0;
@@ -445,8 +437,8 @@ static isize support_graph_chain_disintegrated(
         }
     }
 end:
-    scu_queue_free(queue);
-    scu_free(remainingSupports);
+    scu_queue_delete(queue);
+    SCU_ARRAY_DELETE(remainingSupports, count);
     return totalDisintegrated;
 }
 
@@ -469,7 +461,7 @@ int main() {
             "An error occurred while building the support graph (code %d).\n",
             error
         );
-        bricks_free(bricks);
+        bricks_delete(bricks);
         return EXIT_FAILURE;
     }
     isize disintegratable = support_graph_disintegratable(&supportGraph);
@@ -482,7 +474,7 @@ int main() {
         "%" ISIZE_PRID " bricks would be disintegrated in a chain reaction.\n",
         chainDisintegrated
     );
-    support_graph_free(&supportGraph);
-    bricks_free(bricks);
+    support_graph_delete(&supportGraph);
+    bricks_delete(bricks);
     return EXIT_SUCCESS;
 }

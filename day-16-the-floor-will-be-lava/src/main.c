@@ -1,14 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/math.h>
-#include <scu/memory.h>
-#include <scu/queue.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a tile on a grid. */
@@ -81,7 +73,7 @@ typedef struct State {
  * @return `true` if a tile was successfully parsed, otherwise `false`.
  */
 static inline bool tile_parse(char c, Tile* tile) {
-    SCU_ASSERT(tile != nullptr);
+    SCU_ASSERT(tile);
     switch (c) {
         case '.':
             *tile = TILE_EMPTY;
@@ -117,9 +109,9 @@ static inline bool tile_parse(char c, Tile* tile) {
  *
  * @param[in, out] grid The grid to deallocate.
  */
-static inline void grid_free(Grid* grid) {
-    if (grid != nullptr) {
-        scu_list_free(grid->tiles);
+static inline void grid_delete(Grid* grid) {
+    if (grid) {
+        scu_list_delete(grid->tiles);
         grid->tiles = nullptr;
     }
 }
@@ -152,11 +144,11 @@ static inline void grid_free(Grid* grid) {
  * appropriate error code.
  */
 static ScuError grid_parse(Grid* grid) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     grid->width = 0;
     grid->height = 0;
-    grid->tiles = scu_list_new(SCU_SIZEOF(Tile));
-    if (grid->tiles == nullptr) {
+    grid->tiles = scu_list_new(Tile);
+    if (!grid->tiles) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     bool foundWidth = false;
@@ -195,11 +187,11 @@ static ScuError grid_parse(Grid* grid) {
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    grid_free(grid);
+    SCU_ARRAY_DELETE(line, size);
+    grid_delete(grid);
     return error;
 }
 
@@ -212,7 +204,7 @@ fail:
  * `false`.
  */
 static inline bool grid_exists(const Grid* grid, Position position) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     return (position.x >= 0) && (position.x < grid->width)
         && (position.y >= 0) && (position.y < grid->height);
 }
@@ -302,9 +294,9 @@ static inline ScuError enqueue_if_exists(
     Position position,
     Direction direction
 ) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     SCU_ASSERT(grid_exists(grid, position));
-    SCU_ASSERT(queue != nullptr);
+    SCU_ASSERT(queue);
     State next = {
         .position = position_move(position, direction),
         .direction = direction
@@ -330,15 +322,15 @@ static isize grid_energized_tiles(
     Position position,
     Direction direction
 ) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     SCU_ASSERT(grid_exists(grid, position));
-    u8* visited = scu_calloc(grid->width * grid->height, SCU_SIZEOF(u8));
-    if (visited == nullptr) {
+    u8* visited = SCU_ARRAY_NEW_ZEROED(u8, grid->width * grid->height);
+    if (!visited) {
         return -1;
     }
     isize energizedTiles = -1;
-    ScuQueue* queue = scu_queue_new(SCU_SIZEOF(State));
-    if (queue == nullptr) {
+    ScuQueue* queue = scu_queue_new(State);
+    if (!queue) {
         goto end;
     }
     ScuError error = scu_queue_enqueue(
@@ -438,8 +430,8 @@ static isize grid_energized_tiles(
         }
     }
 end:
-    scu_queue_free(queue);
-    scu_free(visited);
+    scu_queue_delete(queue);
+    SCU_ARRAY_DELETE(visited, grid->width * grid->height);
     return energizedTiles;
 }
 
@@ -453,7 +445,7 @@ end:
  * directions on the edge of the grid, or `-1` if an error occurred.
  */
 static isize grid_max_energized_tiles(const Grid* grid) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     isize maxEnergizedTiles = 0;
     for (isize x = 0; x < grid->width; x++) {
         isize energizedTiles = grid_energized_tiles(
@@ -525,6 +517,6 @@ int main() {
             "directions is %" ISIZE_PRID ".\n",
         maxEnergizedTiles
     );
-    grid_free(&grid);
+    grid_delete(&grid);
     return EXIT_SUCCESS;
 }

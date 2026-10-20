@@ -1,14 +1,7 @@
 #define SCU_SHORT_ALIASES
 
 #include <ctype.h>
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/math.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a direction of movement. */
@@ -62,7 +55,7 @@ typedef struct Position {
  * @return `true` if a direction was successfully parsed, otherwise `false`.
  */
 static inline bool direction_parse(char c, Direction* direction) {
-    SCU_ASSERT(direction != nullptr);
+    SCU_ASSERT(direction);
     switch (c) {
         case 'R':
             *direction = DIRECTION_RIGHT;
@@ -113,8 +106,8 @@ static inline bool instruction_parse(
     const char* restrict line,
     Instruction* restrict instruction
 ) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(instruction != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(instruction);
     char direction;
     isize count = scu_sscanf(
         line,
@@ -147,7 +140,7 @@ static inline bool instruction_parse(
  * @param[in, out] instruction The instruction to fix.
  */
 static inline void instruction_fix(Instruction* instruction) {
-    SCU_ASSERT(instruction != nullptr);
+    SCU_ASSERT(instruction);
     char direction = instruction->code[CODE_LENGTH - 2];
     SCU_ASSERT((direction >= '0') && (direction <= '3'));
     instruction->direction = direction - '0';
@@ -196,9 +189,9 @@ static inline void instruction_fix(Instruction* instruction) {
  * otherwise an appropriate error code.
  */
 static ScuError instructions_parse(Instruction** instructions) {
-    SCU_ASSERT(instructions != nullptr);
-    *instructions = scu_list_new(SCU_SIZEOF(Instruction));
-    if (*instructions == nullptr) {
+    SCU_ASSERT(instructions);
+    *instructions = scu_list_new(Instruction);
+    if (!*instructions) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -218,11 +211,11 @@ static ScuError instructions_parse(Instruction** instructions) {
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    scu_list_free(*instructions);
+    SCU_ARRAY_DELETE(line, size);
+    scu_list_delete(*instructions);
     *instructions = nullptr;
     return error;
 }
@@ -234,7 +227,7 @@ fail:
  * @param[in, out] instructions The list of instructions to fix.
  */
 static inline void instructions_fix(Instruction* instructions) {
-    SCU_ASSERT(instructions != nullptr);
+    SCU_ASSERT(instructions);
     Instruction* instruction;
     SCU_LIST_FOREACH(instruction, instructions) {
         instruction_fix(instruction);
@@ -250,7 +243,7 @@ static inline void instructions_fix(Instruction* instructions) {
  * specified list of instructions.
  */
 static isize lagoon_volume(const Instruction* instructions) {
-    SCU_ASSERT(instructions != nullptr);
+    SCU_ASSERT(instructions);
     Position prev = { .x = 0, .y = 0 };
     isize doubleArea = 0;
     isize perimeter = 0;
@@ -302,6 +295,6 @@ int main() {
             " cubic meters of lava.\n",
         volumeFixed
     );
-    scu_list_free(instructions);
+    scu_list_delete(instructions);
     return EXIT_SUCCESS;
 }

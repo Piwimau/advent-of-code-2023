@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/math.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a color of a cube. */
@@ -85,8 +78,8 @@ static const Token TOKENS[COLOR_BLUE + 1] = {
  * @return `true` if a game was parsed successfully, otherwise `false`.
  */
 static inline bool game_parse(const char* restrict line, Game* restrict game) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(game != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(game);
     *game = (Game) { .id = -1, .minCubes = { -1, -1, -1 } };
     isize read = 0;
     if (
@@ -148,7 +141,7 @@ static inline bool game_parse(const char* restrict line, Game* restrict game) {
  * @return `true` if the game is possible, otherwise `false`.
  */
 static inline bool game_is_possible(const Game* game) {
-    SCU_ASSERT(game != nullptr);
+    SCU_ASSERT(game);
     return (game->minCubes[COLOR_RED] <= MAX_CUBES[COLOR_RED])
         && (game->minCubes[COLOR_GREEN] <= MAX_CUBES[COLOR_GREEN])
         && (game->minCubes[COLOR_BLUE] <= MAX_CUBES[COLOR_BLUE]);
@@ -164,7 +157,7 @@ static inline bool game_is_possible(const Game* game) {
  * @return The power of the game.
  */
 static inline i32 game_power(const Game* game) {
-    SCU_ASSERT(game != nullptr);
+    SCU_ASSERT(game);
     return game->minCubes[COLOR_RED] * game->minCubes[COLOR_GREEN]
         * game->minCubes[COLOR_BLUE];
 }
@@ -189,7 +182,7 @@ int main() {
                 "The line '%s' does not represent a valid game.\n",
                 line
             );
-            scu_free(line);
+            SCU_ARRAY_DELETE(line, size);
             return EXIT_FAILURE;
         }
         if (game_is_possible(&game)) {
@@ -197,7 +190,7 @@ int main() {
         }
         sumOfPowers += game_power(&game);
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     if (error != SCU_ERROR_END_OF_FILE) {
         scu_fprintf(
             SCU_STDERR,

@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/hash-map.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a type of rule in a workflow. */
@@ -128,8 +121,8 @@ static constexpr isize RATING_MAX = 4000;
  * @return `true` if the specified rules are equal, otherwise `false`.
  */
 static bool rule_equal(const Rule* a, const Rule* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     if (a->type != b->type) {
         return false;
     }
@@ -154,9 +147,9 @@ static bool rule_equal(const Rule* a, const Rule* b) {
  *
  * @param[in, out] workflow The workflow to deallocate.
  */
-static inline void workflow_free(Workflow* workflow) {
-    if (workflow != nullptr) {
-        scu_list_free(workflow->rules);
+static inline void workflow_delete(Workflow* workflow) {
+    if (workflow) {
+        scu_list_delete(workflow->rules);
         workflow->rules = nullptr;
     }
 }
@@ -215,15 +208,15 @@ static ScuError workflow_parse(
     const char* restrict line,
     Workflow* restrict workflow
 ) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(workflow != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(workflow);
     isize openBraceIndex = scu_str_index_of(line, '{');
     if ((openBraceIndex == -1) || (openBraceIndex >= MAX_ID_LENGTH)) {
         return SCU_ERROR_INVALID_FORMAT;
     }
     scu_strncpy(workflow->id, SCU_SIZEOF(workflow->id), line, openBraceIndex);
-    workflow->rules = scu_list_new(SCU_SIZEOF(Rule));
-    if (workflow->rules == nullptr) {
+    workflow->rules = scu_list_new(Rule);
+    if (!workflow->rules) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     line += openBraceIndex + 1;
@@ -308,7 +301,7 @@ static ScuError workflow_parse(
     }
     return SCU_ERROR_NONE;
 fail:
-    workflow_free(workflow);
+    workflow_delete(workflow);
     return error;
 }
 
@@ -323,8 +316,8 @@ fail:
  * @return `true` if the specified workflows are equal, otherwise `false`.
  */
 static bool workflow_equal(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const Workflow* l = a;
     const Workflow* r = b;
     if (scu_strcmp(l->id, r->id) != 0) {
@@ -369,8 +362,8 @@ static bool workflow_equal(const void* a, const void* b) {
  * otherwise `false`.
  */
 static bool rating_parse(const char* restrict line, Rating* restrict rating) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(rating != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(rating);
     return scu_sscanf(
         line,
         "{x=%" ISIZE_SCND ",m=%" ISIZE_SCND ",a=%" ISIZE_SCND ",s=%"
@@ -392,7 +385,7 @@ static bool rating_parse(const char* restrict line, Rating* restrict rating) {
  * @return
  */
 static usize workflow_id_hash(const void* value) {
-    SCU_ASSERT(value != nullptr);
+    SCU_ASSERT(value);
     const char (*id)[MAX_ID_LENGTH] = value;
     const char* s = *id;
     return scu_hash_str(&s);
@@ -410,8 +403,8 @@ static usize workflow_id_hash(const void* value) {
  * `false`.
  */
 static bool workflow_id_equal(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const char (*l)[MAX_ID_LENGTH] = a;
     const char (*r)[MAX_ID_LENGTH] = b;
     return scu_strcmp(*l, *r) == 0;
@@ -457,23 +450,23 @@ static ScuError parse_workflows_and_ratings(
     ScuHashMap** workflows,
     Rating** ratings
 ) {
-    SCU_ASSERT(workflows != nullptr);
-    SCU_ASSERT(ratings != nullptr);
+    SCU_ASSERT(workflows);
+    SCU_ASSERT(ratings);
     *workflows = scu_hash_map_new(
-        SCU_SIZEOF(char[MAX_ID_LENGTH]),
-        SCU_SIZEOF(Workflow),
+        char[MAX_ID_LENGTH],
+        Workflow,
         workflow_id_hash,
         workflow_id_equal,
         workflow_equal
     );
-    if (*workflows == nullptr) {
+    if (!*workflows) {
         *ratings = nullptr;
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     ScuError error = SCU_ERROR_NONE;
-    *ratings = scu_list_new(SCU_SIZEOF(Rating));
-    if (*ratings == nullptr) {
-        scu_hash_map_free(*workflows);
+    *ratings = scu_list_new(Rating);
+    if (!*ratings) {
+        scu_hash_map_delete(*workflows);
         *workflows = nullptr;
         return SCU_ERROR_OUT_OF_MEMORY;
     }
@@ -497,7 +490,7 @@ static ScuError parse_workflows_and_ratings(
             // If we fail to add the workflow to the hash map, we need to
             // deallocate it manually here since it won't be caught by the
             // cleanup code at the end of this function.
-            workflow_free(&workflow);
+            workflow_delete(&workflow);
             goto fail;
         }
     }
@@ -518,13 +511,13 @@ static ScuError parse_workflows_and_ratings(
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    scu_list_free(*ratings);
+    SCU_ARRAY_DELETE(line, size);
+    scu_list_delete(*ratings);
     *ratings = nullptr;
-    scu_hash_map_free(*workflows);
+    scu_hash_map_delete(*workflows);
     *workflows = nullptr;
     return error;
 }
@@ -541,8 +534,8 @@ static isize sum_of_accepted_ratings(
     const ScuHashMap* workflows,
     const Rating* ratings
 ) {
-    SCU_ASSERT(workflows != nullptr);
-    SCU_ASSERT(ratings != nullptr);
+    SCU_ASSERT(workflows);
+    SCU_ASSERT(ratings);
     isize sum = 0;
     const Rating* rating;
     SCU_LIST_FOREACH(rating, ratings) {
@@ -602,8 +595,8 @@ static isize count_accepted_ratings(
     const char* id,
     RangeSet ranges
 ) {
-    SCU_ASSERT(workflows != nullptr);
-    SCU_ASSERT(id != nullptr);
+    SCU_ASSERT(workflows);
+    SCU_ASSERT(id);
     if (scu_strcmp(id, "A") == 0) {
         return (ranges.x.high - ranges.x.low + 1)
             * (ranges.m.high - ranges.m.low + 1)
@@ -671,13 +664,13 @@ static isize count_accepted_ratings(
  *
  * @param[in, out] workflows The hash map of workflows to deallocate.
  */
-static inline void workflows_free(ScuHashMap* workflows) {
-    if (workflows != nullptr) {
+static inline void workflows_delete(ScuHashMap* workflows) {
+    if (workflows) {
         ScuHashMapEntry entry;
         SCU_HASH_MAP_FOREACH(entry, workflows) {
-            workflow_free(entry.value);
+            workflow_delete(entry.value);
         }
-        scu_hash_map_free(workflows);
+        scu_hash_map_delete(workflows);
     }
 }
 
@@ -691,9 +684,9 @@ static inline void workflows_free(ScuHashMap* workflows) {
  *
  * @param[in, out] ratings The list of part ratings to deallocate.
  */
-static inline void ratings_free(Rating* ratings) {
-    if (ratings != nullptr) {
-        scu_list_free(ratings);
+static inline void ratings_delete(Rating* ratings) {
+    if (ratings) {
+        scu_list_delete(ratings);
     }
 }
 
@@ -730,7 +723,7 @@ int main() {
             ".\n",
         count
     );
-    workflows_free(workflows);
-    ratings_free(ratings);
+    workflows_delete(workflows);
+    ratings_delete(ratings);
     return EXIT_SUCCESS;
 }

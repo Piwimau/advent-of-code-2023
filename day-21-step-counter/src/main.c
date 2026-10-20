@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/queue.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a tile in a map. */
@@ -80,7 +73,7 @@ static constexpr isize STEPS_INFINITE = 26'501'365;
  * @return `true` if a tile was successfully parsed, otherwise `false`.
  */
 static inline bool tile_parse(char c, Tile* tile) {
-    SCU_ASSERT(tile != nullptr);
+    SCU_ASSERT(tile);
     switch (c) {
         case 'S':
             [[fallthrough]];
@@ -133,9 +126,9 @@ static inline Position position_move(Position position, Direction direction) {
  *
  * @param[in, out] map The map to deallocate.
  */
-static inline void map_free(Map* map) {
-    if (map != nullptr) {
-        scu_list_free(map->tiles);
+static inline void map_delete(Map* map) {
+    if (map) {
+        scu_list_delete(map->tiles);
         map->tiles = nullptr;
     }
 }
@@ -170,11 +163,11 @@ static inline void map_free(Map* map) {
  * appropriate error code.
  */
 static ScuError map_parse(Map* map) {
-    SCU_ASSERT(map != nullptr);
+    SCU_ASSERT(map);
     map->width = 0;
     map->height = 0;
-    map->tiles = scu_list_new(SCU_SIZEOF(Tile));
-    if (map->tiles == nullptr) {
+    map->tiles = scu_list_new(Tile);
+    if (!map->tiles) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     map->start = (Position) {};
@@ -232,11 +225,11 @@ static ScuError map_parse(Map* map) {
         error = SCU_ERROR_INVALID_FORMAT;
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    map_free(map);
+    SCU_ARRAY_DELETE(line, size);
+    map_delete(map);
     return error;
 }
 
@@ -251,7 +244,7 @@ fail:
  * @return The number of reachable garden plots, or -1 on failure.
  */
 static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
-    SCU_ASSERT(map != nullptr);
+    SCU_ASSERT(map);
     SCU_ASSERT(steps >= 0);
     isize width = isInfinite ? 2 * steps + 1 : map->width;
     isize height = isInfinite ? 2 * steps + 1 : map->height;
@@ -259,8 +252,8 @@ static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
         .x = isInfinite ? steps : 0,
         .y = isInfinite ? steps : 0
     };
-    isize* dists = scu_malloc(width * height * SCU_SIZEOF(isize));
-    if (dists == nullptr) {
+    isize* dists = SCU_ARRAY_NEW(isize, width * height);
+    if (!dists) {
         return -1;
     }
     for (isize i = 0; i < (width * height); i++) {
@@ -268,9 +261,9 @@ static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
     }
     Position start = isInfinite ? (Position) { .x = 0, .y = 0 } : map->start;
     dists[(start.y + offset.y) * width + start.x + offset.x] = 0;
-    ScuQueue* queue = scu_queue_new(SCU_SIZEOF(Position));
-    if (queue == nullptr) {
-        scu_free(dists);
+    ScuQueue* queue = scu_queue_new(Position);
+    if (!queue) {
+        SCU_ARRAY_DELETE(dists, width * height);
         return -1;
     }
     ScuError error = scu_queue_enqueue(queue, &start);
@@ -323,12 +316,12 @@ static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
             reachablePlots++;
         }
     }
-    scu_queue_free(queue);
-    scu_free(dists);
+    scu_queue_delete(queue);
+    SCU_ARRAY_DELETE(dists, width * height);
     return reachablePlots;
 fail:
-    scu_queue_free(queue);
-    scu_free(dists);
+    scu_queue_delete(queue);
+    SCU_ARRAY_DELETE(dists, width * height);
     return -1;
 }
 
@@ -353,7 +346,7 @@ static inline isize map_reachable_finite(const Map* map) {
  * @return The number of reachable garden plots, or -1 on failure.
  */
 static inline isize map_reachable_infinite(const Map* map) {
-    SCU_ASSERT(map != nullptr);
+    SCU_ASSERT(map);
     isize half = map->width / 2;
     isize period = map->width;
     isize f0 = map_reachable(map, half, true);
@@ -390,6 +383,6 @@ int main() {
         STEPS_INFINITE,
         reachableInfinite
     );
-    map_free(&map);
+    map_delete(&map);
     return EXIT_SUCCESS;
 }

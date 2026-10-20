@@ -1,11 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -83,18 +78,16 @@ static inline bool vector_equals(Vector a, Vector b) {
 /**
  * @brief Parses a schematic from a grid representation.
  *
- * @note The grid representation must be a null-terminated byte string. It must
- * have been allocated using `scu_malloc()`, `scu_calloc()`, `scu_realloc()` or
- * the underlying allocator used by these functions. Additionally, it must
- * consist of one or more lines, each of equal length. The last line must not
- * end with a newline character.
+ * @note The grid representation must be a null-terminated byte string.
+ * Additionally, it must consist of one or more lines, each of equal length. The
+ * last line must not end with a newline character.
  *
  * @warning The schematic takes ownership of the grid. It modifies the grid
  * in-place by replacing newline characters and the terminating null character
  * with dots ('.') to simplify later processing. As such, the grid is no longer
  * treated as a null-terminated byte string, but rather as a two-dimensional
- * array of characters. However, the caller is still responsible for freeing the
- * grid with `scu_free()` when the schematic is no longer needed.
+ * array of characters. However, the caller is still responsible for
+ * deallocating the grid when the schematic is no longer needed.
  *
  * @param[in, out]  grid      The grid representation of the schematic.
  * @param[out]      schematic The parsed schematic.
@@ -104,8 +97,8 @@ static bool schematic_parse(
     char* restrict grid,
     Schematic* restrict schematic
 ) {
-    SCU_ASSERT(grid != nullptr);
-    SCU_ASSERT(schematic != nullptr);
+    SCU_ASSERT(grid);
+    SCU_ASSERT(schematic);
     isize width = scu_str_index_of(grid, '\n');
     if (width == -1) {
         return false;
@@ -139,7 +132,7 @@ static inline bool schematic_is_valid_position(
     const Schematic* schematic,
     Vector position
 ) {
-    SCU_ASSERT(schematic != nullptr);
+    SCU_ASSERT(schematic);
     return (position.x >= 0) && (position.x < schematic->width)
         && (position.y >= 0) && (position.y < schematic->height);
 }
@@ -157,7 +150,7 @@ static inline bool schematic_is_digit(
     const Schematic* schematic,
     Vector position
 ) {
-    SCU_ASSERT(schematic != nullptr);
+    SCU_ASSERT(schematic);
     if (!schematic_is_valid_position(schematic, position)) {
         return false;
     }
@@ -181,7 +174,7 @@ static inline bool schematic_is_symbol(
     const Schematic* schematic,
     Vector position
 ) {
-    SCU_ASSERT(schematic != nullptr);
+    SCU_ASSERT(schematic);
     if (!schematic_is_valid_position(schematic, position)) {
         return false;
     }
@@ -207,7 +200,7 @@ static inline bool schematic_is_start_of_part_number(
     const Schematic* schematic,
     Vector position
 ) {
-    SCU_ASSERT(schematic != nullptr);
+    SCU_ASSERT(schematic);
     if (!schematic_is_digit(schematic, position)) {
         return false;
     }
@@ -270,7 +263,7 @@ static inline const char* schematic_char_at(
     const Schematic* schematic,
     Vector position
 ) {
-    SCU_ASSERT(schematic != nullptr);
+    SCU_ASSERT(schematic);
     SCU_ASSERT(schematic_is_valid_position(schematic, position));
     return &schematic->grid[position.y * schematic->width + position.x];
 }
@@ -290,8 +283,8 @@ static inline bool schematic_try_get_start_of_number(
     Vector position,
     Vector* start
 ) {
-    SCU_ASSERT(schematic != nullptr);
-    SCU_ASSERT(start != nullptr);
+    SCU_ASSERT(schematic);
+    SCU_ASSERT(start);
     if (!schematic_is_digit(schematic, position)) {
         return false;
     }
@@ -316,7 +309,7 @@ static inline bool schematic_try_get_start_of_number(
  * @return The sum of all part numbers within the schematic.
  */
 static i32 schematic_sum_of_part_numbers(const Schematic* schematic) {
-    SCU_ASSERT(schematic != nullptr);
+    SCU_ASSERT(schematic);
     i32 sumOfPartNumbers = 0;
     for (isize y = 0; y < schematic->height; y++) {
         for (isize x = 0; x < schematic->width; x++) {
@@ -347,7 +340,7 @@ static i32 schematic_sum_of_part_numbers(const Schematic* schematic) {
  * @return The sum of all gear ratios within the schematic.
  */
 static i32 schematic_sum_of_gear_ratios(const Schematic* schematic) {
-    SCU_ASSERT(schematic != nullptr);
+    SCU_ASSERT(schematic);
     i32 sumOfGearRatios = 0;
     for (isize y = 0; y < schematic->height; y++) {
         for (isize x = 0; x < schematic->width; x++) {
@@ -425,7 +418,7 @@ int main() {
             SCU_STDERR,
             "An error occurred while parsing the schematic.\n"
         );
-        scu_free(buffer);
+        SCU_ARRAY_DELETE(buffer, size);
         return EXIT_FAILURE;
     }
     i32 sumOfPartNumbers = schematic_sum_of_part_numbers(&schematic);
@@ -438,6 +431,6 @@ int main() {
         "The sum of the gear ratios is %" I32_PRID ".\n",
         sumOfGearRatios
     );
-    scu_free(schematic.grid);
+    SCU_ARRAY_DELETE(schematic.grid, size);
     return EXIT_SUCCESS;
 }

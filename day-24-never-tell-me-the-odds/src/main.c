@@ -1,15 +1,8 @@
 #define SCU_SHORT_ALIASES
 
-#include <math.h>
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/math.h>
-#include <scu/memory.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
+#include <tgmath.h>
 
 /** @brief Represents a three-dimensional vector. */
 typedef struct Vec3 {
@@ -64,8 +57,8 @@ static inline bool hailstone_parse(
     const char* restrict line,
     Hailstone* restrict hailstone
 ) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(hailstone != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(hailstone);
     return scu_sscanf(
         line,
         "%" F64_SCNF ", %" F64_SCNF ", %" F64_SCNF " @ %" F64_SCNF ", %"
@@ -89,9 +82,9 @@ static inline bool hailstone_parse(
  *
  * @param[in, out] hailstones The list of hailstones to deallocate.
  */
-static inline void hailstones_free(Hailstone* hailstones) {
-    if (hailstones != nullptr) {
-        scu_list_free(hailstones);
+static inline void hailstones_delete(Hailstone* hailstones) {
+    if (hailstones) {
+        scu_list_delete(hailstones);
     }
 }
 
@@ -107,9 +100,9 @@ static inline void hailstones_free(Hailstone* hailstones) {
  * @return `SCU_ERROR_NONE` on success, otherwise an appropriate error code.
  */
 static ScuError hailstones_parse(Hailstone** hailstones) {
-    SCU_ASSERT(hailstones != nullptr);
-    *hailstones = scu_list_new(SCU_SIZEOF(Hailstone));
-    if (*hailstones == nullptr) {
+    SCU_ASSERT(hailstones);
+    *hailstones = scu_list_new(Hailstone);
+    if (!*hailstones) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -131,11 +124,11 @@ static ScuError hailstones_parse(Hailstone** hailstones) {
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    hailstones_free(*hailstones);
+    SCU_ARRAY_DELETE(line, size);
+    hailstones_delete(*hailstones);
     *hailstones = nullptr;
     return error;
 }
@@ -155,7 +148,7 @@ fail:
  * of hailstones.
  */
 static isize hailstones_intersections(const Hailstone* hailstones) {
-    SCU_ASSERT(hailstones != nullptr);
+    SCU_ASSERT(hailstones);
     isize count = 0;
     for (isize i = 0; i < scu_list_count(hailstones); i++) {
         for (isize j = i + 1; j < scu_list_count(hailstones); j++) {
@@ -195,7 +188,7 @@ static isize hailstones_intersections(const Hailstone* hailstones) {
  * thrown rock.
  */
 static f64 hailstones_sum_of_perfect_throw(const Hailstone* hailstones) {
-    SCU_ASSERT(hailstones != nullptr);
+    SCU_ASSERT(hailstones);
     f64 m[6][7] = { };
     for (isize k = 0; k < 2; k++) {
         f64 px0 = hailstones[0].position.x;
@@ -284,6 +277,6 @@ int main() {
             "thrown rock is %.0" F64_PRIF ".\n",
         sum
     );
-    hailstones_free(hailstones);
+    hailstones_delete(hailstones);
     return EXIT_SUCCESS;
 }

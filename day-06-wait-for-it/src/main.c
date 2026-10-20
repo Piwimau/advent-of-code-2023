@@ -1,11 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 #include <tgmath.h>
 
@@ -51,9 +46,9 @@ typedef struct Race {
  * @return `SCU_ERROR_NONE` on success, or an appropriate error code on failure.
  */
 static ScuError parse_races(Race** races) {
-    SCU_ASSERT(races != nullptr);
-    *races = scu_list_new(SCU_SIZEOF(Race));
-    if (*races == nullptr) {
+    SCU_ASSERT(races);
+    *races = scu_list_new(Race);
+    if (!*races) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -96,11 +91,11 @@ static ScuError parse_races(Race** races) {
         }
         temp += read;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    scu_list_free(*races);
+    SCU_ARRAY_DELETE(line, size);
+    scu_list_delete(*races);
     *races = nullptr;
     return error;
 }
@@ -112,7 +107,7 @@ fail:
  * @return The number of possibilities to win the specified race.
  */
 static inline i64 race_win_possibilities(const Race* race) {
-    SCU_ASSERT(race != nullptr);
+    SCU_ASSERT(race);
     f64 time = (f64) race->time;
     f64 d = time * time - 4.0 * (f64) race->distance;
     i64 minTime = (i64) floor((time - sqrt(d)) / 2.0) + 1;
@@ -131,7 +126,7 @@ static inline i64 race_win_possibilities(const Race* race) {
  * specified list of races.
  */
 static i64 product_of_win_possibilities_individual(const Race* races) {
-    SCU_ASSERT(races != nullptr);
+    SCU_ASSERT(races);
     SCU_ASSERT(scu_list_count(races) > 0);
     i64 product = 1;
     const Race* race;
@@ -152,7 +147,7 @@ static i64 product_of_win_possibilities_individual(const Race* races) {
  * combines all races in the specified list of races, or -1 on failure.
  */
 static i64 win_possibilities_single_combined(const Race* races) {
-    SCU_ASSERT(races != nullptr);
+    SCU_ASSERT(races);
     SCU_ASSERT(scu_list_count(races) > 0);
     char* temp = nullptr;
     isize size = 0;
@@ -183,11 +178,11 @@ static i64 win_possibilities_single_combined(const Race* races) {
     if (scu_sscanf(temp, "%" I64_SCND, &distance) != 1) {
         goto fail;
     }
-    scu_free(temp);
+    SCU_ARRAY_DELETE(temp, size);
     Race singleRace = { .time = time, .distance = distance };
     return race_win_possibilities(&singleRace);
 fail:
-    scu_free(temp);
+    SCU_ARRAY_DELETE(temp, size);
     return -1;
 }
 
@@ -214,6 +209,6 @@ int main() {
             "race.\n",
         singleCombined
     );
-    scu_list_free(races);
+    scu_list_delete(races);
     return EXIT_SUCCESS;
 }

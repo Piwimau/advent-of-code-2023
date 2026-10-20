@@ -1,17 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/compare.h>
-#include <scu/equal.h>
-#include <scu/hash-map.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/prio-queue.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a two-dimensional grid of heat losses. */
@@ -80,9 +69,9 @@ typedef struct State {
  *
  * @param[in, out] grid The grid to deallocate.
  */
-static inline void grid_free(Grid* grid) {
-    if (grid != nullptr) {
-        scu_list_free(grid->losses);
+static inline void grid_delete(Grid* grid) {
+    if (grid) {
+        scu_list_delete(grid->losses);
         grid->losses = nullptr;
     }
 }
@@ -100,11 +89,11 @@ static inline void grid_free(Grid* grid) {
  * appropriate error code.
  */
 static ScuError grid_parse(Grid* grid) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     grid->width = 0;
     grid->height = 0;
-    grid->losses = scu_list_new(SCU_SIZEOF(isize));
-    if (grid->losses == nullptr) {
+    grid->losses = scu_list_new(isize);
+    if (!grid->losses) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     bool foundWidth = false;
@@ -141,11 +130,11 @@ static ScuError grid_parse(Grid* grid) {
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    grid_free(grid);
+    SCU_ARRAY_DELETE(line, size);
+    grid_delete(grid);
     return error;
 }
 
@@ -158,7 +147,7 @@ fail:
  * @return A hash for the specified state.
  */
 static usize state_hash(const void* value) {
-    SCU_ASSERT(value != nullptr);
+    SCU_ASSERT(value);
     const State* state = value;
     usize hash = 0;
     hash = scu_hash_combine(hash, scu_hash_isize(&state->position.x));
@@ -181,8 +170,8 @@ static usize state_hash(const void* value) {
  * @return `true` if the specified states are equal, otherwise `false`.
  */
 static bool state_equal(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const State* l = a;
     const State* r = b;
     return (l->position.x == r->position.x)
@@ -225,7 +214,7 @@ static inline Position position_move(Position position, Direction direction) {
  * otherwise `false`.
  */
 static inline bool grid_is_dest(const Grid* grid, Position position) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     return (position.x == (grid->width - 1))
         && (position.y == (grid->height - 1));
 }
@@ -239,7 +228,7 @@ static inline bool grid_is_dest(const Grid* grid, Position position) {
  * `false`.
  */
 static inline bool grid_exists(const Grid* grid, Position position) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     return (position.x >= 0) && (position.x < grid->width)
         && (position.y >= 0) && (position.y < grid->height);
 }
@@ -254,7 +243,7 @@ static inline bool grid_exists(const Grid* grid, Position position) {
  * @return The heat loss at the specified position on the specified grid.
  */
 static inline isize grid_loss_at(const Grid* grid, Position position) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     SCU_ASSERT(grid_exists(grid, position));
     return grid->losses[position.y * grid->width + position.x];
 }
@@ -275,26 +264,22 @@ static isize grid_min_heat_loss(
     isize minStraightMoves,
     isize maxStraightMoves
 ) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     SCU_ASSERT(minStraightMoves >= 1);
     SCU_ASSERT(maxStraightMoves >= minStraightMoves);
     isize minLoss = -1;
     ScuHashMap* minLossByState = scu_hash_map_new(
-        SCU_SIZEOF(State),
-        SCU_SIZEOF(isize),
+        State,
+        isize,
         state_hash,
         state_equal,
         scu_equal_isize
     );
-    if (minLossByState == nullptr) {
+    if (!minLossByState) {
         return -1;
     }
-    ScuPrioQueue* queue = scu_prio_queue_new(
-        SCU_SIZEOF(State),
-        SCU_SIZEOF(isize),
-        scu_compare_isize
-    );
-    if (queue == nullptr) {
+    ScuPrioQueue* queue = scu_prio_queue_new(State, isize, scu_compare_isize);
+    if (!queue) {
         goto end;
     }
     State startRight = {
@@ -427,8 +412,8 @@ static isize grid_min_heat_loss(
         }
     }
 end:
-    scu_prio_queue_free(queue);
-    scu_hash_map_free(minLossByState);
+    scu_prio_queue_delete(queue);
+    scu_hash_map_delete(minLossByState);
     return minLoss;
 }
 
@@ -453,6 +438,6 @@ int main() {
         "The minimum heat loss for an ultra crucible is %" ISIZE_PRID ".\n",
         minLossUltra
     );
-    grid_free(&grid);
+    grid_delete(&grid);
     return EXIT_SUCCESS;
 }

@@ -1,14 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/equal.h>
-#include <scu/hash-map.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents the condition of a spring. */
@@ -60,7 +52,7 @@ static constexpr int32_t UNFOLD_COPIES = 5;
  * @return `true` if a condition was successfully parsed, otherwise `false`.
  */
 static inline bool condition_parse(char c, Condition* condition) {
-    SCU_ASSERT(condition != nullptr);
+    SCU_ASSERT(condition);
     switch (c) {
         case '?':
             *condition = CONDITION_UNKNOWN;
@@ -90,11 +82,11 @@ static inline bool condition_parse(char c, Condition* condition) {
  *
  * @param[in, out] record The record to deallocate.
  */
-static inline void record_free(Record* record) {
-    if (record != nullptr) {
-        scu_list_free(record->conditions);
+static inline void record_delete(Record* record) {
+    if (record) {
+        scu_list_delete(record->conditions);
         record->conditions = nullptr;
-        scu_list_free(record->groupSizes);
+        scu_list_delete(record->groupSizes);
         record->groupSizes = nullptr;
     }
 }
@@ -129,16 +121,16 @@ static inline ScuError record_parse(
     const char* restrict line,
     Record* restrict record
 ) {
-    SCU_ASSERT(line != nullptr);
-    SCU_ASSERT(record != nullptr);
+    SCU_ASSERT(line);
+    SCU_ASSERT(record);
     ScuError error = SCU_ERROR_NONE;
-    record->conditions = scu_list_new(SCU_SIZEOF(Condition));
-    if (record->conditions == nullptr) {
+    record->conditions = scu_list_new(Condition);
+    if (!record->conditions) {
         error = SCU_ERROR_OUT_OF_MEMORY;
         goto fail;
     }
-    record->groupSizes = scu_list_new(SCU_SIZEOF(int32_t));
-    if (record->groupSizes == nullptr) {
+    record->groupSizes = scu_list_new(int32_t);
+    if (!record->groupSizes) {
         error = SCU_ERROR_OUT_OF_MEMORY;
         goto fail;
     }
@@ -177,7 +169,7 @@ static inline ScuError record_parse(
     }
     return SCU_ERROR_NONE;
 fail:
-    record_free(record);
+    record_delete(record);
     return error;
 }
 
@@ -198,8 +190,8 @@ static inline i64 record_count_possible_arrangements(
     State state,
     ScuHashMap* cache
 ) {
-    SCU_ASSERT(record != nullptr);
-    SCU_ASSERT(cache != nullptr);
+    SCU_ASSERT(record);
+    SCU_ASSERT(cache);
     const Condition* conditions = record->conditions;
     const int32_t* groupSizes = record->groupSizes;
     isize conditionCount = scu_list_count(conditions);
@@ -281,7 +273,7 @@ static inline i64 record_count_possible_arrangements(
  * @return `true` if the record was successfully unfolded, otherwise `false`.
  */
 static bool record_unfold(Record* record) {
-    SCU_ASSERT(record != nullptr);
+    SCU_ASSERT(record);
     isize originalConditions = scu_list_count(record->conditions);
     ScuError error = scu_list_ensure_capacity(
         &record->conditions,
@@ -336,13 +328,13 @@ static bool record_unfold(Record* record) {
  *
  * @param[in, out] records The list of records to deallocate.
  */
-static inline void records_free(Record* records) {
-    if (records != nullptr) {
+static inline void records_delete(Record* records) {
+    if (records) {
         Record* record;
         SCU_LIST_FOREACH(record, records) {
-            record_free(record);
+            record_delete(record);
         }
-        scu_list_free(records);
+        scu_list_delete(records);
     }
 }
 
@@ -357,9 +349,9 @@ static inline void records_free(Record* records) {
  * an appropriate error code.
  */
 static ScuError records_parse(Record** records) {
-    SCU_ASSERT(records != nullptr);
-    *records = scu_list_new(SCU_SIZEOF(Record));
-    if (*records == nullptr) {
+    SCU_ASSERT(records);
+    *records = scu_list_new(Record);
+    if (!*records) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -377,18 +369,18 @@ static ScuError records_parse(Record** records) {
         }
         error = scu_list_add(records, &record);
         if (error != SCU_ERROR_NONE) {
-            record_free(&record);
+            record_delete(&record);
             goto fail;
         }
     }
     if (error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    records_free(*records);
+    SCU_ARRAY_DELETE(line, size);
+    records_delete(*records);
     *records = nullptr;
     return error;
 }
@@ -402,7 +394,7 @@ fail:
  * @return A hash for the specified state.
  */
 static usize state_hash(const void* value) {
-    SCU_ASSERT(value != nullptr);
+    SCU_ASSERT(value);
     const State* state = value;
     usize hash = 0;
     hash = scu_hash_combine(hash, scu_hash_isize(&state->conditionIndex));
@@ -421,8 +413,8 @@ static usize state_hash(const void* value) {
  * @return `true` if the specified states are equal, otherwise `false`.
  */
 static bool state_equal(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const State* l = a;
     const State* r = b;
     return (l->conditionIndex == r->conditionIndex)
@@ -439,15 +431,15 @@ static bool state_equal(const void* a, const void* b) {
  * `-1` if an error occurred.
  */
 static i64 records_sum_of_possible_arrangements(const Record* records) {
-    SCU_ASSERT(records != nullptr);
+    SCU_ASSERT(records);
     ScuHashMap* cache = scu_hash_map_new(
-        SCU_SIZEOF(State),
-        SCU_SIZEOF(i64),
+        State,
+        i64,
         state_hash,
         state_equal,
         scu_equal_i64
     );
-    if (cache == nullptr) {
+    if (!cache) {
         return -1;
     }
     i64 totalArrangements = 0;
@@ -465,7 +457,7 @@ static i64 records_sum_of_possible_arrangements(const Record* records) {
         totalArrangements += arrangements;
         scu_hash_map_clear(cache);
     }
-    scu_hash_map_free(cache);
+    scu_hash_map_delete(cache);
     return totalArrangements;
 }
 
@@ -476,7 +468,7 @@ static i64 records_sum_of_possible_arrangements(const Record* records) {
  * @return `true` if the records were successfully unfolded, otherwise `false`.
  */
 static bool records_unfold(Record* records) {
-    SCU_ASSERT(records != nullptr);
+    SCU_ASSERT(records);
     Record* record;
     SCU_LIST_FOREACH(record, records) {
         if (!record_unfold(record)) {
@@ -508,7 +500,7 @@ int main() {
             SCU_STDERR,
             "An error occurred while unfolding the records.\n"
         );
-        records_free(records);
+        records_delete(records);
         return EXIT_FAILURE;
     }
     i64 sumUnfolded = records_sum_of_possible_arrangements(records);
@@ -517,6 +509,6 @@ int main() {
             I64_PRID ".\n",
         sumUnfolded
     );
-    records_free(records);
+    records_delete(records);
     return EXIT_SUCCESS;
 }

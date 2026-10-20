@@ -37,7 +37,7 @@ if cc.get_id() == 'gcc'
 endif
 
 m_dep = cc.find_library('m', required: false)
-scu_dep = dependency('scu', fallback: ['scu', 'scu_dep'], static: true)
+scu_dep = dependency('scu', static: true)
 
 sh = find_program('sh')
 

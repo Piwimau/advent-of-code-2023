@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/math.h>
-#include <scu/memory.h>
-#include <scu/queue.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a tile in a two-dimensional grid. */
@@ -151,7 +144,7 @@ typedef enum Direction {
  * @return `true` if a tile was successfully parsed, otherwise `false`.
  */
 static inline bool tile_parse(char c, Tile* tile) {
-    SCU_ASSERT(tile != nullptr);
+    SCU_ASSERT(tile);
     switch (c) {
         case '.':
             *tile = TILE_PATH;
@@ -190,9 +183,9 @@ static inline bool tile_parse(char c, Tile* tile) {
  *
  * @param[in, out] grid The grid to deallocate.
  */
-static inline void grid_free(Grid* grid) {
-    if (grid != nullptr) {
-        scu_list_free(grid->tiles);
+static inline void grid_delete(Grid* grid) {
+    if (grid) {
+        scu_list_delete(grid->tiles);
         grid->tiles = nullptr;
     }
 }
@@ -237,10 +230,10 @@ static inline void grid_free(Grid* grid) {
  * @return `SCU_ERROR_NONE` on success, otherwise an appropriate error code.
  */
 static ScuError grid_parse(Grid* grid) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     *grid = (Grid) {};
-    grid->tiles = scu_list_new(SCU_SIZEOF(Tile));
-    if (grid->tiles == nullptr) {
+    grid->tiles = scu_list_new(Tile);
+    if (!grid->tiles) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     char* line = nullptr;
@@ -287,7 +280,7 @@ static ScuError grid_parse(Grid* grid) {
         error = SCU_ERROR_INVALID_FORMAT;
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     for (isize i = 0; i < grid->width; i++) {
         if (grid->tiles[i] == TILE_PATH) {
             grid->start = (Position) {.x = i, .y = 0};
@@ -302,8 +295,8 @@ static ScuError grid_parse(Grid* grid) {
     }
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    grid_free(grid);
+    SCU_ARRAY_DELETE(line, size);
+    grid_delete(grid);
     return error;
 }
 
@@ -350,7 +343,7 @@ static inline Position position_move(Position position, Direction direction) {
  * otherwise `false`.
  */
 static inline bool grid_exists(const Grid* grid, Position position) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     return (position.x >= 0) && (position.x < grid->width)
         && (position.y >= 0) && (position.y < grid->height);
 }
@@ -366,7 +359,7 @@ static inline bool grid_exists(const Grid* grid, Position position) {
  * @return The index of the specified position in the specified grid.
  */
 static inline isize grid_index(const Grid* grid, Position position) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     SCU_ASSERT(grid_exists(grid, position));
     return position.y * grid->width + position.x;
 }
@@ -387,8 +380,8 @@ static bool grid_to_compressed_graph(
     bool respectSlopes,
     Graph* graph
 ) {
-    SCU_ASSERT(grid != nullptr);
-    SCU_ASSERT(graph != nullptr);
+    SCU_ASSERT(grid);
+    SCU_ASSERT(graph);
     *graph = (Graph) { };
     for (isize y = 0; y < grid->height; y++) {
         for (isize x = 0; x < grid->width; x++) {
@@ -430,13 +423,13 @@ static bool grid_to_compressed_graph(
             }
         }
     }
-    bool* visited = scu_calloc(grid->width * grid->height, SCU_SIZEOF(bool));
-    if (visited == nullptr) {
+    bool* visited = SCU_ARRAY_NEW_ZEROED(bool, grid->width * grid->height);
+    if (!visited) {
         return false;
     }
-    ScuQueue* queue = scu_queue_new(SCU_SIZEOF(CompressionState));
-    if (queue == nullptr) {
-        scu_free(visited);
+    ScuQueue* queue = scu_queue_new(CompressionState);
+    if (!queue) {
+        SCU_ARRAY_DELETE(visited, grid->width * grid->height);
         return false;
     }
     for (isize i = 0; i < graph->junctionCount; i++) {
@@ -525,12 +518,12 @@ static bool grid_to_compressed_graph(
             junction->neighbors |= (1ULL << junction->edges[j].dest);
         }
     }
-    scu_queue_free(queue);
-    scu_free(visited);
+    scu_queue_delete(queue);
+    SCU_ARRAY_DELETE(visited, grid->width * grid->height);
     return true;
 fail:
-    scu_queue_free(queue);
-    scu_free(visited);
+    scu_queue_delete(queue);
+    SCU_ARRAY_DELETE(visited, grid->width * grid->height);
     return false;
 }
 
@@ -542,7 +535,7 @@ fail:
  * @return The number of steps in the longest hike, or `-1` on failure.
  */
 static isize graph_longest_hike(const Graph* graph) {
-    SCU_ASSERT(graph != nullptr);
+    SCU_ASSERT(graph);
     State stack[MAX_JUNCTIONS];
     isize stackCount = 0;
     stack[stackCount] = (State) {
@@ -605,10 +598,10 @@ int main() {
             SCU_STDERR,
             "An error occurred while converting the grid to a compressed graph.\n"
         );
-        grid_free(&grid);
+        grid_delete(&grid);
         return EXIT_FAILURE;
     }
-    grid_free(&grid);
+    grid_delete(&grid);
     isize longestWetHike = graph_longest_hike(&wetGraph);
     isize longestDryHike = graph_longest_hike(&dryGraph);
     scu_printf(

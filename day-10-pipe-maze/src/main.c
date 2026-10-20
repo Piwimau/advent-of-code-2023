@@ -1,14 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/array.h>
-#include <scu/assert.h>
-#include <scu/hash-set.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a cardinal direction. */
@@ -128,7 +120,7 @@ static inline Direction direction_opposite(Direction direction) {
  * @return `true` if a tile was successfully parsed, otherwise `false`.
  */
 static inline bool tile_parse(char c, Tile* tile) {
-    SCU_ASSERT(tile != nullptr);
+    SCU_ASSERT(tile);
     switch (c) {
         case '.':
             *tile = TILE_GROUND;
@@ -187,7 +179,7 @@ static Position position_neighbor(Position position, Direction direction) {
  * @return A hash for the specified position.
  */
 static usize hash_position(const void* value) {
-    SCU_ASSERT(value != nullptr);
+    SCU_ASSERT(value);
     const Position* position = value;
     usize hash = 0;
     hash = scu_hash_combine(hash, scu_hash_isize(&position->x));
@@ -206,8 +198,8 @@ static usize hash_position(const void* value) {
  * @return `true` if `*a` and `*b` are equal, otherwise `false`.
  */
 static bool equal_position(const void* a, const void* b) {
-    SCU_ASSERT(a != nullptr);
-    SCU_ASSERT(b != nullptr);
+    SCU_ASSERT(a);
+    SCU_ASSERT(b);
     const Position* l = a;
     const Position* r = b;
     return (l->x == r->x) && (l->y == r->y);
@@ -222,7 +214,7 @@ static bool equal_position(const void* a, const void* b) {
  * position is out of bounds.
  */
 static inline Tile* grid_tile_at(const Grid* grid, Position position) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     if (
         (position.x < 0) || (position.x >= grid->width)
             || (position.y < 0) || (position.y >= grid->height)
@@ -247,9 +239,9 @@ static inline bool grid_is_pipe_facing(
     Position position,
     Direction direction
 ) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     const Tile* tile = grid_tile_at(grid, position);
-    return (tile != nullptr) && ((*tile & direction) != 0);
+    return tile && ((*tile & direction) != 0);
 }
 
 /**
@@ -264,9 +256,9 @@ static inline bool grid_is_pipe_facing(
  *
  * @param[in, out] grid The grid to deallocate all resources of.
  */
-static void grid_free(Grid* grid) {
-    if (grid != nullptr) {
-        scu_list_free(grid->tiles);
+static void grid_delete(Grid* grid) {
+    if (grid) {
+        scu_list_delete(grid->tiles);
         grid->tiles = nullptr;
     }
 }
@@ -303,9 +295,9 @@ static void grid_free(Grid* grid) {
  * @return `SCU_ERROR_NONE` on success, or an appropriate error code on failure.
  */
 static ScuError grid_parse(Grid* grid) {
-    SCU_ASSERT(grid != nullptr);
-    grid->tiles = scu_list_new(SCU_SIZEOF(Tile));
-    if (grid->tiles == nullptr) {
+    SCU_ASSERT(grid);
+    grid->tiles = scu_list_new(Tile);
+    if (!grid->tiles) {
         return SCU_ERROR_OUT_OF_MEMORY;
     }
     grid->width = 0;
@@ -382,11 +374,11 @@ static ScuError grid_parse(Grid* grid) {
             *start |= *direction;
         }
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
-    grid_free(grid);
+    SCU_ARRAY_DELETE(line, size);
+    grid_delete(grid);
     *grid = (Grid) { };
     return error;
 }
@@ -406,9 +398,9 @@ static inline bool grid_is_tile(
     Position position,
     Tile tile
 ) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     const Tile* current = grid_tile_at(grid, position);
-    return (current != nullptr) && (*current == tile);
+    return current && (*current == tile);
 }
 
 /**
@@ -424,16 +416,13 @@ static inline bool grid_is_tile(
  * @return The analysis result for the specified grid.
  */
 static GridAnalysis grid_analyze(const Grid* grid) {
-    SCU_ASSERT(grid != nullptr);
+    SCU_ASSERT(grid);
     ScuHashSet* loop = scu_hash_set_new(
-        SCU_SIZEOF(Position),
+        Position,
         hash_position,
         equal_position
     );
-    if (
-        (loop == nullptr)
-            || (scu_hash_set_add(loop, &grid->start) != SCU_ERROR_NONE)
-    ) {
+    if (!loop || (scu_hash_set_add(loop, &grid->start) != SCU_ERROR_NONE)) {
         goto fail;
     }
     Direction prev = DIRECTION_NONE;
@@ -478,10 +467,10 @@ static GridAnalysis grid_analyze(const Grid* grid) {
             }
         }
     }
-    scu_hash_set_free(loop);
+    scu_hash_set_delete(loop);
     return analysis;
 fail:
-    scu_hash_set_free(loop);
+    scu_hash_set_delete(loop);
     return (GridAnalysis) { .farthestDistance = -1, .enclosedTiles = -1 };
 }
 
@@ -505,6 +494,6 @@ int main() {
         "The number of tiles enclosed by the loop is %" I64_PRID ".\n",
         analysis.enclosedTiles
     );
-    grid_free(&grid);
+    grid_delete(&grid);
     return EXIT_SUCCESS;
 }

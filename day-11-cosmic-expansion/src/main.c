@@ -1,13 +1,6 @@
 #define SCU_SHORT_ALIASES
 
-#include <scu/alloc.h>
-#include <scu/assert.h>
-#include <scu/io.h>
-#include <scu/list.h>
-#include <scu/math.h>
-#include <scu/memory.h>
-#include <scu/string.h>
-#include <scu/types.h>
+#include <scu/scu.h>
 #include <stdlib.h>
 
 /** @brief Represents a pixel in an image of the universe. */
@@ -68,7 +61,7 @@ typedef struct Position {
  * @return `true` if a pixel was successfully parsed, otherwise `false`.
  */
 static inline bool pixel_parse(char c, Pixel* pixel) {
-    SCU_ASSERT(pixel != nullptr);
+    SCU_ASSERT(pixel);
     switch (c) {
         case '.':
             *pixel = PIXEL_EMPTY;
@@ -107,13 +100,13 @@ static inline isize position_distance(Position a, Position b) {
  *
  * @param[in, out] image The image to deallocate all resources of.
  */
-static void image_free(Image* image) {
-    if (image != nullptr) {
-        scu_list_free(image->pixels);
+static void image_delete(Image* image) {
+    if (image) {
+        scu_list_delete(image->pixels);
+        scu_list_delete(image->isEmptyRow);
+        scu_list_delete(image->isEmptyColumn);
         image->pixels = nullptr;
-        scu_list_free(image->isEmptyRow);
         image->isEmptyRow = nullptr;
-        scu_list_free(image->isEmptyColumn);
         image->isEmptyColumn = nullptr;
     }
 }
@@ -145,21 +138,21 @@ static void image_free(Image* image) {
  * @return `SCU_ERROR_NONE` on success, or an appropriate error code on failure.
  */
 static ScuError image_parse(Image* image) {
-    SCU_ASSERT(image != nullptr);
+    SCU_ASSERT(image);
     ScuError error = SCU_ERROR_NONE;
     *image = (Image) { };
-    image->pixels = scu_list_new(SCU_SIZEOF(Pixel));
-    if (image->pixels == nullptr) {
+    image->pixels = scu_list_new(Pixel);
+    if (!image->pixels) {
         error = SCU_ERROR_OUT_OF_MEMORY;
         goto imageAllocFailed;
     }
-    image->isEmptyRow = scu_list_new(SCU_SIZEOF(bool));
-    if (image->isEmptyRow == nullptr) {
+    image->isEmptyRow = scu_list_new(bool);
+    if (!image->isEmptyRow) {
         error = SCU_ERROR_OUT_OF_MEMORY;
         goto imageAllocFailed;
     }
-    image->isEmptyColumn = scu_list_new(SCU_SIZEOF(bool));
-    if (image->isEmptyColumn == nullptr) {
+    image->isEmptyColumn = scu_list_new(bool);
+    if (!image->isEmptyColumn) {
         error = SCU_ERROR_OUT_OF_MEMORY;
         goto imageAllocFailed;
     }
@@ -232,12 +225,12 @@ static ScuError image_parse(Image* image) {
         error = SCU_ERROR_INVALID_FORMAT;
         goto fail;
     }
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
     return SCU_ERROR_NONE;
 fail:
-    scu_free(line);
+    SCU_ARRAY_DELETE(line, size);
 imageAllocFailed:
-    image_free(image);
+    image_delete(image);
     return error;
 }
 
@@ -259,10 +252,10 @@ static isize image_sum_of_shortest_path_lengths(
     const Image* image,
     i32 expansionFactor
 ) {
-    SCU_ASSERT(image != nullptr);
+    SCU_ASSERT(image);
     SCU_ASSERT(expansionFactor > 0);
-    Position* galaxies = scu_list_new(SCU_SIZEOF(Position));
-    if (galaxies == nullptr) {
+    Position* galaxies = scu_list_new(Position);
+    if (!galaxies) {
         return -1;
     }
     for (isize y = 0; y < image->height; y++) {
@@ -289,7 +282,7 @@ static isize image_sum_of_shortest_path_lengths(
                     .y = y + emptyRowsBefore * (expansionFactor - 1)
                 };
                 if (scu_list_add(&galaxies, &position) != SCU_ERROR_NONE) {
-                    scu_list_free(galaxies);
+                    scu_list_delete(galaxies);
                     return -1;
                 }
             }
@@ -301,7 +294,7 @@ static isize image_sum_of_shortest_path_lengths(
             sumOfDistances += position_distance(galaxies[i], galaxies[j]);
         }
     }
-    scu_list_free(galaxies);
+    scu_list_delete(galaxies);
     return sumOfDistances;
 }
 
@@ -328,6 +321,6 @@ int main() {
             "lengths is %" I64_PRID ".\n",
         sumMillion
     );
-    image_free(&image);
+    image_delete(&image);
     return EXIT_SUCCESS;
 }
