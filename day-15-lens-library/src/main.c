@@ -93,9 +93,9 @@ static inline ScuError step_parse(
     }
     isize operationIndex = scu_str_index_of_any(*line, "=-");
     if (
-        (operationIndex == -1)
-            || ((operationIndex != (endIndex - 2))
-                && (operationIndex != (endIndex - 1)))
+        operationIndex == -1
+            || (operationIndex != endIndex - 2
+                && operationIndex != endIndex - 1)
     ) {
         return SCU_ERROR_INVALID_FORMAT;
     }
@@ -106,7 +106,7 @@ static inline ScuError step_parse(
     if ((*line)[operationIndex] == '=') {
         step->operation = OPERATION_ADD_OR_REPLACE;
         char c = (*line)[operationIndex + 1];
-        if ((c < '1') || (c > '9')) {
+        if (c < '1' || c > '9') {
             step_delete(step);
             return SCU_ERROR_INVALID_FORMAT;
         }

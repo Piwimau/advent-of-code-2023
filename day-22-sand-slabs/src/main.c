@@ -217,10 +217,10 @@ static ScuError bricks_settle(Brick* bricks) {
         SCU_LIST_FOREACH(settledBrickIndex, settledBrickIndices) {
             Brick* settledBrick = &bricks[*settledBrickIndex];
             if (
-                (brick->first.x > settledBrick->last.x)
-                    || (brick->last.x < settledBrick->first.x)
-                    || (brick->first.y > settledBrick->last.y)
-                    || (brick->last.y < settledBrick->first.y)
+                brick->first.x > settledBrick->last.x
+                    || brick->last.x < settledBrick->first.x
+                    || brick->first.y > settledBrick->last.y
+                    || brick->last.y < settledBrick->first.y
             ) {
                 continue;
             }
@@ -337,10 +337,10 @@ static ScuError bricks_build_support_graph(
                 continue;
             }
             if (
-                (bricks[i].first.x > bricks[j].last.x)
-                    || (bricks[i].last.x < bricks[j].first.x)
-                    || (bricks[i].first.y > bricks[j].last.y)
-                    || (bricks[i].last.y < bricks[j].first.y)
+                bricks[i].first.x > bricks[j].last.x
+                    || bricks[i].last.x < bricks[j].first.x
+                    || bricks[i].first.y > bricks[j].last.y
+                    || bricks[i].last.y < bricks[j].first.y
             ) {
                 continue;
             }

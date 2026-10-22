@@ -162,14 +162,14 @@ static isize hailstones_intersections(const Hailstone* hailstones) {
             f64 dy = b.position.y - a.position.y;
             f64 tA = (dx * -b.velocity.y + b.velocity.x * dy) / d;
             f64 tB = (a.velocity.x * dy - a.velocity.y * dx) / d;
-            if ((tA < 0.0) || (tB < 0.0)) {
+            if (tA < 0.0 || tB < 0.0) {
                 continue;
             }
             f64 x = a.position.x + a.velocity.x * tA;
             f64 y = a.position.y + a.velocity.y * tA;
             if (
-                (x >= TEST_AREA_MIN) && (x <= TEST_AREA_MAX)
-                    && (y >= TEST_AREA_MIN) && (y <= TEST_AREA_MAX)
+                x >= TEST_AREA_MIN && x <= TEST_AREA_MAX
+                    && y >= TEST_AREA_MIN && y <= TEST_AREA_MAX
             ) {
                 count++;
             }

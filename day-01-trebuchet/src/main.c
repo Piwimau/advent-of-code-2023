@@ -63,7 +63,7 @@ static inline bool find_calibration_values(
     i32 firstAlnumDigit = -1;
     i32 lastAlnumDigit = -1;
     for (isize i = 0; s[i] != '\0'; i++) {
-        if ((s[i] >= '1') && (s[i] <= '9')) {
+        if (s[i] >= '1' && s[i] <= '9') {
             i32 digit = s[i] - '0';
             if (firstDigit == -1) {
                 firstDigit = digit;

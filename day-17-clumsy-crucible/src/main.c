@@ -115,7 +115,7 @@ static ScuError grid_parse(Grid* grid) {
             goto fail;
         }
         for (char* c = line; *c != '\0'; c++) {
-            if ((*c < '0') || (*c > '9')) {
+            if (*c < '0' || *c > '9') {
                 error = SCU_ERROR_INVALID_FORMAT;
                 goto fail;
             }
@@ -174,10 +174,10 @@ static bool state_equal(const void* a, const void* b) {
     SCU_ASSERT(b);
     const State* l = a;
     const State* r = b;
-    return (l->position.x == r->position.x)
-        && (l->position.y == r->position.y)
-        && (l->direction == r->direction)
-        && (l->straightMoves == r->straightMoves);
+    return l->position.x == r->position.x
+        && l->position.y == r->position.y
+        && l->direction == r->direction
+        && l->straightMoves == r->straightMoves;
 }
 
 /**
@@ -215,8 +215,7 @@ static inline Position position_move(Position position, Direction direction) {
  */
 static inline bool grid_is_dest(const Grid* grid, Position position) {
     SCU_ASSERT(grid);
-    return (position.x == (grid->width - 1))
-        && (position.y == (grid->height - 1));
+    return position.x == grid->width - 1 && position.y == grid->height - 1;
 }
 
 /**
@@ -229,8 +228,8 @@ static inline bool grid_is_dest(const Grid* grid, Position position) {
  */
 static inline bool grid_exists(const Grid* grid, Position position) {
     SCU_ASSERT(grid);
-    return (position.x >= 0) && (position.x < grid->width)
-        && (position.y >= 0) && (position.y < grid->height);
+    return position.x >= 0 && position.x < grid->width
+        && position.y >= 0 && position.y < grid->height;
 }
 
 /**
@@ -315,9 +314,7 @@ static isize grid_min_heat_loss(
         Position position = state.position;
         Direction direction = state.direction;
         isize straightMoves = state.straightMoves;
-        if (
-            grid_is_dest(grid, position) && (straightMoves >= minStraightMoves)
-        ) {
+        if (grid_is_dest(grid, position) && straightMoves >= minStraightMoves) {
             minLoss = loss;
             break;
         }

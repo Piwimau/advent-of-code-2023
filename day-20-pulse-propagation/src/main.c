@@ -161,10 +161,10 @@ static inline ScuError module_parse(
     SCU_ASSERT(line);
     SCU_ASSERT(module);
     isize spaceIndex = scu_str_index_of(line, ' ');
-    if ((spaceIndex == -1) || ((spaceIndex - 1) >= MAX_NAME_LENGTH)) {
+    if (spaceIndex == -1 || (spaceIndex - 1) >= MAX_NAME_LENGTH) {
         return SCU_ERROR_INVALID_FORMAT;
     }
-    if ((*line == '%') || (*line == '&')) {
+    if (*line == '%' || *line == '&') {
         module->type = (*line == '%')
             ? MODULE_TYPE_FLIP_FLOP
             : MODULE_TYPE_CONJUNCTION;
@@ -186,7 +186,7 @@ static inline ScuError module_parse(
         return SCU_ERROR_INVALID_FORMAT;
     }
     spaceIndex = scu_str_index_of(line, ' ');
-    if ((spaceIndex == -1) || (scu_strncmp(line, "->", spaceIndex) != 0)) {
+    if (spaceIndex == -1 || scu_strncmp(line, "->", spaceIndex) != 0) {
         return SCU_ERROR_INVALID_FORMAT;
     }
     line += spaceIndex + 1;
@@ -262,7 +262,7 @@ static bool module_equal(const void* a, const void* b) {
     const Module* r = b;
     // Realistically speaking, we should probably also compare the inputs and
     // outputs, but the type and name should be sufficient for our purposes.
-    return (l->type == r->type)
+    return l->type == r->type
         && scu_strncmp(l->name, r->name, MAX_NAME_LENGTH) == 0;
 }
 
@@ -344,7 +344,7 @@ static ScuError modules_parse(ScuHashMap** modules) {
             Module* dest;
             if (
                 scu_hash_map_try_get(*modules, *output, &dest)
-                    && (dest->type == MODULE_TYPE_CONJUNCTION)
+                    && dest->type == MODULE_TYPE_CONJUNCTION
             ) {
                 scu_hash_map_add(dest->inputs, *name, &(bool) { false });
             }
@@ -548,7 +548,7 @@ static isize modules_min_button_presses(ScuHashMap* modules) {
         }
     }
 rxInputFound:
-    if (!rxInput || (rxInput->type != MODULE_TYPE_CONJUNCTION)) {
+    if (!rxInput || rxInput->type != MODULE_TYPE_CONJUNCTION) {
         return -1;
     }
     ScuHashMap* cycleLengths = scu_hash_map_new(
@@ -586,16 +586,16 @@ rxInputFound:
         while (scu_queue_try_dequeue(queue, &pulse)) {
             if (
                 pulse.isHigh
-                    && (scu_strncmp(
+                    && scu_strncmp(
                         pulse.dest,
                         rxInput->name,
                         MAX_NAME_LENGTH
-                    ) == 0)
+                    ) == 0
             ) {
                 error = scu_hash_map_try_add(cycleLengths, pulse.src, &i);
                 if (
-                    (error != SCU_ERROR_NONE)
-                        && (error != SCU_ERROR_ALREADY_PRESENT)
+                    error != SCU_ERROR_NONE
+                        && error != SCU_ERROR_ALREADY_PRESENT
                 ) {
                     goto fail;
                 }

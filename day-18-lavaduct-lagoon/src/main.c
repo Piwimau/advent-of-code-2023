@@ -117,11 +117,11 @@ static inline bool instruction_parse(
         instruction->code
     );
     if (
-        (count != 3)
+        count != 3
             || !direction_parse(direction, &instruction->direction)
-            || (instruction->distance < 1)
-            || (instruction->code[0] != '#')
-            || (scu_strlen(instruction->code) != (CODE_LENGTH - 1))
+            || instruction->distance < 1
+            || instruction->code[0] != '#'
+            || scu_strlen(instruction->code) != CODE_LENGTH - 1
     ) {
         return false;
     }
@@ -142,7 +142,7 @@ static inline bool instruction_parse(
 static inline void instruction_fix(Instruction* instruction) {
     SCU_ASSERT(instruction);
     char direction = instruction->code[CODE_LENGTH - 2];
-    SCU_ASSERT((direction >= '0') && (direction <= '3'));
+    SCU_ASSERT(direction >= '0' && direction <= '3');
     instruction->direction = direction - '0';
     char distance[CODE_LENGTH] = "0x";
     scu_strncat(

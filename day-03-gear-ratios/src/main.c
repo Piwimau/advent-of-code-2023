@@ -72,7 +72,7 @@ static constexpr i32 NUMBERS_PER_GEAR = 2;
  * @return `true` if `a` and `b` are equal, otherwise `false`.
  */
 static inline bool vector_equals(Vector a, Vector b) {
-    return (a.x == b.x) && (a.y == b.y);
+    return a.x == b.x && a.y == b.y;
 }
 
 /**
@@ -133,8 +133,8 @@ static inline bool schematic_is_valid_position(
     Vector position
 ) {
     SCU_ASSERT(schematic);
-    return (position.x >= 0) && (position.x < schematic->width)
-        && (position.y >= 0) && (position.y < schematic->height);
+    return position.x >= 0 && position.x < schematic->width
+        && position.y >= 0 && position.y < schematic->height;
 }
 
 /**
@@ -155,7 +155,7 @@ static inline bool schematic_is_digit(
         return false;
     }
     char c = schematic->grid[position.y * schematic->width + position.x];
-    return (c >= '0') && (c <= '9');
+    return c >= '0' && c <= '9';
 }
 
 /**
@@ -179,7 +179,7 @@ static inline bool schematic_is_symbol(
         return false;
     }
     char c = schematic->grid[position.y * schematic->width + position.x];
-    return ((c < '0') || (c > '9')) && (c != '.');
+    return (c < '0' || c > '9') && c != '.';
 }
 
 /**

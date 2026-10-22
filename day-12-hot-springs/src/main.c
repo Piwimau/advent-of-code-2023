@@ -198,14 +198,14 @@ static inline i64 record_count_possible_arrangements(
     isize groupSizeCount = scu_list_count(groupSizes);
     if (state.conditionIndex == conditionCount) {
         if (
-            (state.groupSizeIndex == groupSizeCount)
-                && (state.currentGroupSize == 0)
+            state.groupSizeIndex == groupSizeCount
+                && state.currentGroupSize == 0
         ) {
             return 1;
         }
         if (
-            (state.groupSizeIndex == (groupSizeCount - 1))
-                && (state.currentGroupSize == groupSizes[state.groupSizeIndex])
+            state.groupSizeIndex == groupSizeCount - 1
+                && state.currentGroupSize == groupSizes[state.groupSizeIndex]
         ) {
             return 1;
         }
@@ -217,9 +217,7 @@ static inline i64 record_count_possible_arrangements(
     }
     Condition condition = conditions[state.conditionIndex];
     i64 arrangements = 0;
-    if (
-        (condition == CONDITION_OPERATIONAL) || (condition == CONDITION_UNKNOWN)
-    ) {
+    if (condition == CONDITION_OPERATIONAL || condition == CONDITION_UNKNOWN) {
         if (state.currentGroupSize == 0) {
             arrangements += record_count_possible_arrangements(
                 record,
@@ -232,8 +230,8 @@ static inline i64 record_count_possible_arrangements(
             );
         }
         else if (
-            (state.groupSizeIndex < groupSizeCount)
-                && (state.currentGroupSize == groupSizes[state.groupSizeIndex])
+            state.groupSizeIndex < groupSizeCount
+                && state.currentGroupSize == groupSizes[state.groupSizeIndex]
         ) {
             arrangements += record_count_possible_arrangements(
                 record,
@@ -246,9 +244,7 @@ static inline i64 record_count_possible_arrangements(
             );
         }
     }
-    if (
-        (condition == CONDITION_DAMAGED) || (condition == CONDITION_UNKNOWN)
-    ) {
+    if (condition == CONDITION_DAMAGED || condition == CONDITION_UNKNOWN) {
         arrangements += record_count_possible_arrangements(
             record,
             (State) {
@@ -417,9 +413,9 @@ static bool state_equal(const void* a, const void* b) {
     SCU_ASSERT(b);
     const State* l = a;
     const State* r = b;
-    return (l->conditionIndex == r->conditionIndex)
-        && (l->groupSizeIndex == r->groupSizeIndex)
-        && (l->currentGroupSize == r->currentGroupSize);
+    return l->conditionIndex == r->conditionIndex
+        && l->groupSizeIndex == r->groupSizeIndex
+        && l->currentGroupSize == r->currentGroupSize;
 }
 
 /**

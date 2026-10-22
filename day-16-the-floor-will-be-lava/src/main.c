@@ -205,8 +205,8 @@ fail:
  */
 static inline bool grid_exists(const Grid* grid, Position position) {
     SCU_ASSERT(grid);
-    return (position.x >= 0) && (position.x < grid->width)
-        && (position.y >= 0) && (position.y < grid->height);
+    return position.x >= 0 && position.x < grid->width
+        && position.y >= 0 && position.y < grid->height;
 }
 
 /**
@@ -370,9 +370,7 @@ static isize grid_energized_tiles(
                 );
                 break;
             case TILE_SPLITTER_VERTICAL:
-                if (
-                    (direction == DIRECTION_UP) || (direction == DIRECTION_DOWN)
-                ) {
+                if (direction == DIRECTION_UP || direction == DIRECTION_DOWN) {
                     error = enqueue_if_exists(grid, queue, position, direction);
                 }
                 else {
@@ -394,8 +392,7 @@ static isize grid_energized_tiles(
                 break;
             case TILE_SPLITTER_HORIZONTAL:
                 if (
-                    (direction == DIRECTION_LEFT)
-                        || (direction == DIRECTION_RIGHT)
+                    direction == DIRECTION_LEFT || direction == DIRECTION_RIGHT
                 ) {
                     error = enqueue_if_exists(grid, queue, position, direction);
                 }

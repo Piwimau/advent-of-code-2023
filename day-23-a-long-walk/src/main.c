@@ -308,7 +308,7 @@ fail:
  * @return `true` if the specified positions are equal, otherwise `false`.
  */
 static inline bool position_equal(Position a, Position b) {
-    return (a.x == b.x) && (a.y == b.y);
+    return a.x == b.x && a.y == b.y;
 }
 
 /**
@@ -344,8 +344,8 @@ static inline Position position_move(Position position, Direction direction) {
  */
 static inline bool grid_exists(const Grid* grid, Position position) {
     SCU_ASSERT(grid);
-    return (position.x >= 0) && (position.x < grid->width)
-        && (position.y >= 0) && (position.y < grid->height);
+    return position.x >= 0 && position.x < grid->width
+        && position.y >= 0 && position.y < grid->height;
 }
 
 /**
@@ -400,12 +400,12 @@ static bool grid_to_compressed_graph(
                 Position next = position_move(position, direction);
                 if (
                     grid_exists(grid, next)
-                        && (grid->tiles[grid_index(grid, next)] != TILE_FOREST)
+                        && grid->tiles[grid_index(grid, next)] != TILE_FOREST
                 ) {
                     edges++;
                 }
             }
-            if (isStart || isEnd || (edges >= 3)) {
+            if (isStart || isEnd || edges >= 3) {
                 if (graph->junctionCount >= MAX_JUNCTIONS) {
                     return false;
                 }
@@ -457,7 +457,7 @@ static bool grid_to_compressed_graph(
                 Position next = position_move(state.position, direction);
                 if (
                     !grid_exists(grid, next)
-                        || (grid->tiles[grid_index(grid, next)] == TILE_FOREST)
+                        || grid->tiles[grid_index(grid, next)] == TILE_FOREST
                         || visited[grid_index(grid, next)]
                 ) {
                     continue;
@@ -555,8 +555,8 @@ static isize graph_longest_hike(const Graph* graph) {
         }
         const Junction* junction = &graph->junctions[state->junction];
         if (
-            (state->nextEdge >= junction->edgeCount)
-                || ((junction->neighbors & ~state->visited) == 0)
+            state->nextEdge >= junction->edgeCount
+                || (junction->neighbors & ~state->visited) == 0
         ) {
             stackCount--;
             continue;

@@ -351,7 +351,7 @@ static bool platform_equal(const void* a, const void* b) {
     SCU_ASSERT(b);
     const Platform* l = a;
     const Platform* r = b;
-    return (l->width == r->width) && (l->height == r->height)
+    return l->width == r->width && l->height == r->height
         && scu_memcmp(
             l->fields,
             r->fields,

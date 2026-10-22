@@ -94,16 +94,16 @@ static inline bool game_parse(const char* restrict line, Game* restrict game) {
     }
     line += read;
     for (isize i = 0; line[i] != '\0'; i++) {
-        if ((line[i] == ' ') || (line[i] == ',') || (line[i] == ';')) {
+        if (line[i] == ' ' || line[i] == ',' || line[i] == ';') {
             continue;
         }
-        if ((line[i] < '0') || (line[i] > '9')) {
+        if (line[i] < '0' || line[i] > '9') {
             return false;
         }
         i32 cubes = 0;
         if (
-            (scu_sscanf(line + i, "%" I32_SCND "%" ISIZE_SCNN, &cubes, &read) != 1)
-                || (cubes < 0)
+            scu_sscanf(line + i, "%" I32_SCND "%" ISIZE_SCNN, &cubes, &read) != 1
+                || cubes < 0
         ) {
             return false;
         }
@@ -142,9 +142,9 @@ static inline bool game_parse(const char* restrict line, Game* restrict game) {
  */
 static inline bool game_is_possible(const Game* game) {
     SCU_ASSERT(game);
-    return (game->minCubes[COLOR_RED] <= MAX_CUBES[COLOR_RED])
-        && (game->minCubes[COLOR_GREEN] <= MAX_CUBES[COLOR_GREEN])
-        && (game->minCubes[COLOR_BLUE] <= MAX_CUBES[COLOR_BLUE]);
+    return game->minCubes[COLOR_RED] <= MAX_CUBES[COLOR_RED]
+        && game->minCubes[COLOR_GREEN] <= MAX_CUBES[COLOR_GREEN]
+        && game->minCubes[COLOR_BLUE] <= MAX_CUBES[COLOR_BLUE];
 }
 
 /**

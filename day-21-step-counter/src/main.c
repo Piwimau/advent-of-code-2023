@@ -282,9 +282,9 @@ static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
                 .y = next.y + offset.y
             };
             if (
-                (actualNext.x < 0) || (actualNext.x >= width)
-                    || (actualNext.y < 0) || (actualNext.y >= height)
-                    || (dists[actualNext.y * width + actualNext.x] != -1)
+                actualNext.x < 0 || actualNext.x >= width
+                    || actualNext.y < 0 || actualNext.y >= height
+                    || dists[actualNext.y * width + actualNext.x] != -1
             ) {
                 continue;
             }
@@ -312,7 +312,7 @@ static isize map_reachable(const Map* map, isize steps, bool isInfinite) {
     isize parity = steps % 2;
     for (isize i = 0; i < (width * height); i++) {
         isize dist = dists[i];
-        if ((dist >= 0) && (dist <= steps) && ((dist % 2) == parity)) {
+        if (dist >= 0 && dist <= steps && dist % 2 == parity) {
             reachablePlots++;
         }
     }

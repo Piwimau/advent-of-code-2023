@@ -138,7 +138,7 @@ static ScuError almanac_parse(Almanac* almanac) {
     isize size = 0;
     Map* currentMap = nullptr;
     while ((error = scu_readln(&line, &size)) == SCU_ERROR_NONE) {
-        if ((line[0] >= '0') && (line[0] <= '9')) {
+        if (line[0] >= '0' && line[0] <= '9') {
             if (!currentMap) {
                 error = SCU_ERROR_INVALID_FORMAT;
                 goto fail;
@@ -262,8 +262,8 @@ static i64 almanac_lowest_location_single(const Almanac* almanac) {
             const Mapping* mapping;
             SCU_LIST_FOREACH(mapping, map->mappings) {
                 if (
-                    (dest >= mapping->src)
-                        && (dest < (mapping->src + mapping->length))
+                    dest >= mapping->src
+                        && dest < mapping->src + mapping->length
                 ) {
                     dest = mapping->dest + dest - mapping->src;
                     break;
@@ -288,7 +288,7 @@ static i64 almanac_lowest_location_single(const Almanac* almanac) {
 static i64 almanac_lowest_location_ranges(const Almanac* almanac) {
     SCU_ASSERT(almanac);
     isize count = scu_list_count(almanac->seeds);
-    SCU_ASSERT((count > 0) && (count % 2 == 0));
+    SCU_ASSERT(count > 0 && count % 2 == 0);
     i64 lowestLocation = I64_MAX;
     ScuStack* oldRanges = scu_stack_new(Range);
     ScuStack* newRanges = scu_stack_new(Range);

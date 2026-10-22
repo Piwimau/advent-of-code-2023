@@ -129,8 +129,9 @@ static bool rule_equal(const Rule* a, const Rule* b) {
     if (a->type == RULE_TYPE_FWD) {
         return scu_strcmp(a->next, b->next) == 0;
     }
-    return (a->category == b->category) && (a->threshold == b->threshold)
-        && (scu_strcmp(a->next, b->next) == 0);
+    return a->category == b->category
+        && a->threshold == b->threshold
+        && scu_strcmp(a->next, b->next) == 0;
 }
 
 /**
@@ -211,7 +212,7 @@ static ScuError workflow_parse(
     SCU_ASSERT(line);
     SCU_ASSERT(workflow);
     isize openBraceIndex = scu_str_index_of(line, '{');
-    if ((openBraceIndex == -1) || (openBraceIndex >= MAX_ID_LENGTH)) {
+    if (openBraceIndex == -1 || openBraceIndex >= MAX_ID_LENGTH) {
         return SCU_ERROR_INVALID_FORMAT;
     }
     scu_strncpy(workflow->id, SCU_SIZEOF(workflow->id), line, openBraceIndex);
@@ -224,8 +225,8 @@ static ScuError workflow_parse(
     while (*line != '}') {
         Rule rule = { };
         if (
-            ((*line == 'x') || (*line == 'm') || (*line == 'a') || (*line == 's'))
-                && ((*(line + 1) == '<') || (*(line + 1) == '>'))
+            (*line == 'x' || *line == 'm' || *line == 'a' || *line == 's')
+                && (*(line + 1) == '<' || *(line + 1) == '>')
         ) {
             switch (*line) {
                 case 'x':
@@ -263,7 +264,7 @@ static ScuError workflow_parse(
             }
             line++;
             isize commaIndex = scu_str_index_of(line, ',');
-            if ((commaIndex == -1) || (commaIndex >= MAX_ID_LENGTH)) {
+            if (commaIndex == -1 || commaIndex >= MAX_ID_LENGTH) {
                 error = SCU_ERROR_INVALID_FORMAT;
                 goto fail;
             }
@@ -272,10 +273,7 @@ static ScuError workflow_parse(
         }
         else {
             isize closingBraceIndex = scu_str_index_of(line, '}');
-            if (
-                (closingBraceIndex == -1)
-                    || (closingBraceIndex >= MAX_ID_LENGTH)
-            ) {
+            if (closingBraceIndex == -1 || closingBraceIndex >= MAX_ID_LENGTH) {
                 error = SCU_ERROR_INVALID_FORMAT;
                 goto fail;
             }
@@ -540,7 +538,7 @@ static isize sum_of_accepted_ratings(
     const Rating* rating;
     SCU_LIST_FOREACH(rating, ratings) {
         const char* id = "in";
-        while ((scu_strcmp(id, "A") != 0) && (scu_strcmp(id, "R") != 0)) {
+        while (scu_strcmp(id, "A") != 0 && scu_strcmp(id, "R") != 0) {
             const Workflow* workflow = scu_hash_map_get(workflows, id);
             const Rule* rule;
             SCU_LIST_FOREACH(rule, workflow->rules) {
@@ -566,8 +564,8 @@ static isize sum_of_accepted_ratings(
                         SCU_UNREACHABLE();
                 }
                 if (
-                    ((rule->type == RULE_TYPE_CMP_LT) && (value < rule->threshold))
-                        || ((rule->type == RULE_TYPE_CMP_GT) && (value > rule->threshold))
+                    (rule->type == RULE_TYPE_CMP_LT && value < rule->threshold)
+                        || (rule->type == RULE_TYPE_CMP_GT && value > rule->threshold)
                 ) {
                     id = rule->next;
                     break;

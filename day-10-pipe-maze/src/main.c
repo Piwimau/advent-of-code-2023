@@ -202,7 +202,7 @@ static bool equal_position(const void* a, const void* b) {
     SCU_ASSERT(b);
     const Position* l = a;
     const Position* r = b;
-    return (l->x == r->x) && (l->y == r->y);
+    return l->x == r->x && l->y == r->y;
 }
 
 /**
@@ -216,8 +216,8 @@ static bool equal_position(const void* a, const void* b) {
 static inline Tile* grid_tile_at(const Grid* grid, Position position) {
     SCU_ASSERT(grid);
     if (
-        (position.x < 0) || (position.x >= grid->width)
-            || (position.y < 0) || (position.y >= grid->height)
+        position.x < 0 || position.x >= grid->width
+            || position.y < 0 || position.y >= grid->height
     ) {
         return nullptr;
     }
@@ -241,7 +241,7 @@ static inline bool grid_is_pipe_facing(
 ) {
     SCU_ASSERT(grid);
     const Tile* tile = grid_tile_at(grid, position);
-    return tile && ((*tile & direction) != 0);
+    return tile && (*tile & direction) != 0;
 }
 
 /**
@@ -400,7 +400,7 @@ static inline bool grid_is_tile(
 ) {
     SCU_ASSERT(grid);
     const Tile* current = grid_tile_at(grid, position);
-    return current && (*current == tile);
+    return current && *current == tile;
 }
 
 /**
@@ -422,7 +422,7 @@ static GridAnalysis grid_analyze(const Grid* grid) {
         hash_position,
         equal_position
     );
-    if (!loop || (scu_hash_set_add(loop, &grid->start) != SCU_ERROR_NONE)) {
+    if (!loop || scu_hash_set_add(loop, &grid->start) != SCU_ERROR_NONE) {
         goto fail;
     }
     Direction prev = DIRECTION_NONE;

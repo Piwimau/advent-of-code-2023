@@ -143,7 +143,7 @@ static inline ScuError pattern_parse(Pattern* pattern) {
         }
         pattern->height++;
     }
-    if ((error != SCU_ERROR_NONE) && (error != SCU_ERROR_END_OF_FILE)) {
+    if (error != SCU_ERROR_NONE && error != SCU_ERROR_END_OF_FILE) {
         goto fail;
     }
     SCU_ARRAY_DELETE(line, size);
@@ -177,7 +177,7 @@ static inline isize pattern_find_horizontal(
         isize diff = 0;
         for (
             isize offset = 0;
-            ((y - offset) >= 0) && ((y + 1 + offset) < height);
+            y - offset >= 0 && y + 1 + offset < height;
             offset++
         ) {
             for (isize x = 0; x < width; x++) {
@@ -224,7 +224,7 @@ static inline isize pattern_find_vertical(
         isize diff = 0;
         for (
             isize offset = 0;
-            ((x - offset) >= 0) && ((x + 1 + offset) < width);
+            x - offset >= 0 && x + 1 + offset < width;
             offset++
         ) {
             for (isize y = 0; y < height; y++) {

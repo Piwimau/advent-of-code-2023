@@ -248,8 +248,8 @@ static inline bool find_path(
 ) {
     SCU_ASSERT(residuals);
     SCU_ASSERT(count >= 0);
-    SCU_ASSERT((src >= 0) && (src < count));
-    SCU_ASSERT((dst >= 0) && (dst < count));
+    SCU_ASSERT(src >= 0 && src < count);
+    SCU_ASSERT(dst >= 0 && dst < count);
     SCU_ASSERT(parent);
     SCU_ASSERT(visited);
     SCU_ASSERT(queue);
@@ -261,7 +261,7 @@ static inline bool find_path(
     i32 u;
     while (scu_queue_try_dequeue(queue, &u)) {
         for (i32 v = 0; v < count; v++) {
-            if (!visited[v] && (residuals[u * count + v] > 0)) {
+            if (!visited[v] && residuals[u * count + v] > 0) {
                 parent[v] = u;
                 visited[v] = true;
                 if (v == dst) {
@@ -297,7 +297,7 @@ static inline i32 count_reachable(
 ) {
     SCU_ASSERT(residuals);
     SCU_ASSERT(count >= 0);
-    SCU_ASSERT((src >= 0) && (src < count));
+    SCU_ASSERT(src >= 0 && src < count);
     SCU_ASSERT(visited);
     SCU_ASSERT(queue);
     scu_memset(visited, 0, count * SCU_SIZEOF(bool));
@@ -309,7 +309,7 @@ static inline i32 count_reachable(
     while (scu_queue_try_dequeue(queue, &u)) {
         reachable++;
         for (i32 v = 0; v < count; v++) {
-            if (!visited[v] && (residuals[u * count + v] > 0)) {
+            if (!visited[v] && residuals[u * count + v] > 0) {
                 visited[v] = true;
                 scu_queue_enqueue(queue, &v);
             }
@@ -343,16 +343,16 @@ static i32 graph_product_of_group_sizes(const Graph* graph) {
         );
         i32 flow = 0;
         while (
-            (flow < (EDGES_CUT + 1))
-            && find_path(
-                residuals,
-                graph->nodes,
-                0,
-                sink,
-                parent,
-                visited,
-                queue
-            )
+            flow < EDGES_CUT + 1
+                && find_path(
+                    residuals,
+                    graph->nodes,
+                    0,
+                    sink,
+                    parent,
+                    visited,
+                    queue
+                )
         ) {
             for (i32 v = sink; v != 0; v = parent[v]) {
                 i32 u = parent[v];
